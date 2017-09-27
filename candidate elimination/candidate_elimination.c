@@ -88,18 +88,142 @@ void classify(instance training_data[TRAINING_INSTANCE_NUM], int type){
 	}
 }
 
+void copylist(boundary** newList, boundary* to_copy){
+	if (to_copy == NULL){
+		*newList = NULL;
+	}
+	else{
+		boundary* temp = NULL;
+		while(to_copy){
+			boundary* newNode = createHypothesis();
+			newNode->hypothesis = to_copy->hypothesis;
+			to_copy = to_copy->next;
+			if (temp == NULL){
+				temp = newNode;
+				*newList = temp;
+			}
+			else{
+				temp->next = newNode;
+				temp = temp->next;
+			}
+		}
+	}
+}
+
+void printlist(boundary* list){
+	while(list){
+		printf("%d\n", list->hypothesis.feature[0]);
+		list = list->next;
+	}
+}
+
+int equal(instance h1, instance h2){
+	for (int i = 0; i < FEATURE_NUM; i++){
+		if (h1.feature[i]!=h2.feature[i]){
+			return 0;
+		}
+	}
+	return 1;
+}
+
+void listremove(boundary** list, instance h){
+	boundary *temp = *list, *prev;
+	if (temp && equal(temp->hypothesis, h)){
+		*list = temp->next;
+		free(temp);
+		return;
+	}
+	while (temp && !equal(temp->hypothesis, h)){
+		prev = temp;
+		temp = temp->next;
+	}
+	if (temp == NULL) return;
+	prev->next = temp->next;
+	free(temp);
+}
+
+void listappend(boundary** list, instance h){
+	boundary* newNode = createHypothesis();
+	newNode->hypothesis = h;
+	boundary* last = *list;
+	if (*list == NULL){
+		*list = newNode;
+		return;
+	}
+	while(last->next){
+		if (equal(last->hypothesis, h)){
+			free(newNode);
+			return;
+		}
+		last = last->next;
+	}
+	last->next = newNode;
+	return;
+}
+
 void find_version_space(instance training_data[TRAINING_INSTANCE_NUM], version_space vs[LABEL_TYPES+1]){
 	for (int type = 1;type <= LABEL_TYPES;type++){
 		classify(training_data, type);
 		version_space heads = initialize(vs, type);
-		printf("%d\n", heads.generic_head->hypothesis.label);
+
+		instance g, s;
+
+		// for each example
+		for (int i = 0; i < TRAINING_INSTANCE_NUM; i++){
+			// positive exp
+			if (training_data[i].label == 1){
+				
+				// remove inconsistant from general set 
+				boundary* gcopy = NULL;
+				copylist (&gcopy, vs[type].generic_head);
+				boundary* iterator = vs[type].generic_head;
+				while(iterator){
+					g = iterator -> hypothesis;
+					iterator = iterator->next;
+					int flag = 0;
+					for (int i = 0; i < FEATURE_NUM; i++){
+						if (g.feature[i] != vs[type].generic_head->hypothesis.feature[i]
+							&& g.feature[i] != inf){
+							flag = 1;
+							break;
+						}
+					}
+					if (flag == 1){
+						listremove(&gcopy, g);
+					}
+				}
+				copylist(&vs[type].generic_head, gcopy);
+
+				// minimum_generalize specific set
+				s = vs[type].specific_head->hypothesis;
+				listremove(&vs[type].specific_head, s);
+				for (int j = 0; j < FEATURE_NUM; j++){
+					if (s.feature[j] == -inf){
+						s.feature[j] = training_data[i].feature[j];
+					}
+					else if (s.feature[j] != training_data[i].feature[j]){
+						s.feature[j] = inf;
+					}
+				}
+				listappend(&vs[type].specific_head, s);
+				
+				// for (int j = 0; j < FEATURE_NUM; j++){
+				// 	printf("%d ", vs[type].specific_head->hypothesis.feature[j]);
+				// }
+				// printf("\n");
+			}
+			// negative exp
+			else if (training_data[i].label == 0){
+
+			}
+		}
 	}
 }
 
 
 int main(){
 	version_space vs[LABEL_TYPES+1];
-	instance training_data[TRAINING_INSTANCE_NUM]; 
+	instance training_data[TRAINING_INSTANCE_NUM];
 	input (training_data);
 	find_version_space (training_data, vs);
 	// print (training_data);
