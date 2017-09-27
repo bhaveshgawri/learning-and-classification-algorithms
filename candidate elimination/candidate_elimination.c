@@ -20,9 +20,14 @@ typedef struct instance{
 	int feature[FEATURE_NUM];
 }instance;
 
+typedef struct boundary{
+	instance hypothesis;
+	struct boundary* next;
+}boundary;
+
 typedef struct version_space{
-	instance specific_boundary;
-	instance general_boundary;
+	boundary* generic_head;
+	boundary* specific_head;
 }version_space;
 
 void print(instance training_data[TRAINING_INSTANCE_NUM]){
@@ -34,16 +39,30 @@ void print(instance training_data[TRAINING_INSTANCE_NUM]){
 	}
 }
 
-void initialize(version_space boundary[LABEL_TYPES]){
-	for (int type = 1;type <= LABEL_TYPES; type++){
-		(boundary[type]).general_boundary = (instance){.label = 1};
-		(boundary[type]).specific_boundary = (instance){.label = 1};
-		for (int i = 0;i < FEATURE_NUM; i++){
-			(boundary[type].general_boundary).feature[i] = inf;
-			(boundary[type].specific_boundary).feature[i] = -inf;
-			// printf("%d %d\n", (boundary[type].general_boundary).feature[i], (boundary[type].specific_boundary).feature[i]);
-		}
+boundary* createHypothesis(){
+	boundary* b_hypothesis = (boundary*)malloc(sizeof(boundary));	
+	b_hypothesis->next = NULL;
+	return b_hypothesis;
+}
+
+version_space initialize(version_space vs[LABEL_TYPES], int type){
+	boundary* ghead = createHypothesis();
+	boundary* shead = createHypothesis();
+	
+	vs[type].generic_head = ghead;
+	vs[type].specific_head = shead;
+	
+	// label is useless for hypothesis, req for instances only
+	ghead->hypothesis.label = -1;
+	shead->hypothesis.label = -1;
+	
+	for (int i = 0;i < FEATURE_NUM; i++){
+		ghead->hypothesis.feature[i] = inf;
+		shead->hypothesis.feature[i] = -inf;
 	}
+	ghead->next = NULL;
+	shead->next = NULL;
+	return (version_space){.generic_head = ghead, .specific_head = shead};
 }
 
 void input(instance training_data[TRAINING_INSTANCE_NUM]){
@@ -58,28 +77,30 @@ void input(instance training_data[TRAINING_INSTANCE_NUM]){
 	}
 }
 
-void classify(instance training_data[TRAINING_INSTANCE_NUM]){
-	for (int type = 1; type <= LABEL_TYPES; type++){
-		instance general_boundary;
-		instance specific_boundary;
-		for (int j = 0; j < TRAINING_INSTANCE_NUM; j++){
-			if (training_data[j].feature[FEATURE_NUM-1] == type){
-				training_data[j].label = 1;
-			}
-			else{
-				training_data[j].label = 0;
-			}
+void classify(instance training_data[TRAINING_INSTANCE_NUM], int type){
+	for (int j = 0; j < TRAINING_INSTANCE_NUM; j++){
+		if (training_data[j].feature[FEATURE_NUM-1] == type){
+			training_data[j].label = 1;
 		}
-		// find_version_space(training_data);
+		else{
+			training_data[j].label = 0;
+		}
 	}
 }
 
+void find_version_space(instance training_data[TRAINING_INSTANCE_NUM], version_space vs[LABEL_TYPES+1]){
+	for (int type = 1;type <= LABEL_TYPES;type++){
+		classify(training_data, type);
+		version_space heads = initialize(vs, type);
+		printf("%d\n", heads.generic_head->hypothesis.label);
+	}
+}
+
+
 int main(){
-	version_space boundary[LABEL_TYPES+1]; 
+	version_space vs[LABEL_TYPES+1];
 	instance training_data[TRAINING_INSTANCE_NUM]; 
-	
-	initialize (boundary);
 	input (training_data);
-	classify (training_data);
-	print (training_data);
+	find_version_space (training_data, vs);
+	// print (training_data);
 }
