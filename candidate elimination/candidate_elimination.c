@@ -13,7 +13,7 @@ bear,1,0,0,1,0,0,1,1,1,1,0,0,4,0,0,1,1
 #define inf INT_MAX
 #define LABEL_TYPES 1 // later change to 7
 #define FEATURE_NUM 17
-#define TRAINING_INSTANCE_NUM 4 // later change to 101
+#define TRAINING_INSTANCE_NUM 101 // later change to 101
 
 typedef struct features{
 	int size;
@@ -180,114 +180,164 @@ void deletelist(boundary** list){
 
 void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 						version_space vs[LABEL_TYPES+1],
-						features feat[FEATURE_NUM]){
-	for (int type = 1;type <= LABEL_TYPES;type++){
-		classify(training_data, type);
-		version_space heads = initialize(vs, type);
+						features feat[FEATURE_NUM], int type){
+	classify(training_data, type);
+	version_space heads = initialize(vs, type);
 
-		instance g, s;
+	instance g, s;
 
-		// for each example
-		for (int i = 0; i < TRAINING_INSTANCE_NUM; i++){
-			// positive exp
-			if (training_data[i].label == 1){
-				
-				// remove inconsistant from general set 
-				boundary* gcopy = NULL;
-				copylist (&gcopy, vs[type].generic_head);
-				boundary* iterator = vs[type].generic_head;
-				while(iterator){
-					g = iterator -> hypothesis;
-					iterator = iterator -> next;
-					int flag = 0;
-					for (int j = 0; j < FEATURE_NUM; j++){
-						if (g.feature[j] != training_data[i].feature[j]
-							&& g.feature[j] != inf){
-							flag = 1;
-							break;
-						}
-					}
-					if (flag == 1){
-						listremove(&gcopy, g);
+	// for each example
+	for (int i = 0; i < TRAINING_INSTANCE_NUM; i++){
+		// positive exp
+		if (training_data[i].label == 1){
+			
+			// remove inconsistant from general set 
+			boundary* gcopy = NULL;
+			copylist (&gcopy, vs[type].generic_head);
+			boundary* iterator = vs[type].generic_head;
+			while(iterator){
+				g = iterator -> hypothesis;
+				iterator = iterator -> next;
+				int flag = 0;
+				for (int j = 0; j < FEATURE_NUM - 1; j++){
+					if (g.feature[j] != training_data[i].feature[j]
+						&& g.feature[j] != inf){
+						flag = 1;
+						break;
 					}
 				}
-				copylist(&vs[type].generic_head, gcopy);
-
-				// minimum_generalize specific set
-				s = vs[type].specific_head->hypothesis;
-				listremove(&vs[type].specific_head, s);
-				for (int j = 0; j < FEATURE_NUM; j++){
-					if (s.feature[j] == -inf){
-						s.feature[j] = training_data[i].feature[j];
-					}
-					else if (s.feature[j] != training_data[i].feature[j]){
-						s.feature[j] = inf;
-					}
+				if (flag == 1){
+					listremove(&gcopy, g);
 				}
-				listappend(&vs[type].specific_head, s);
-				
-				// for (int j = 0; j < FEATURE_NUM; j++){
-				// 	printf("%d ", vs[type].specific_head->hypothesis.feature[j]);
-				// }
-				// printf("\n");
 			}
-			// negative exp
-			else if (training_data[i].label == 0){
-				boundary* gcopy = NULL;
-				instance spec = vs[type].specific_head->hypothesis;
-				boundary* iterator = vs[type].generic_head;
-				while(iterator){
-					g = iterator -> hypothesis;
-					iterator = iterator -> next;
-					int flag = 0;
-					for (int j = 0; j < FEATURE_NUM; j++){
-						if (g.feature[j] != training_data[i].feature[j]
-							&& g.feature[j] != inf){
-							flag = 1;
-							break;
-						}
-					}
-					if (flag == 1){
-						listappend(&gcopy, g);
-					}
-					else{
-						instance new_g_hyp;
-						for (int j = 0; j < FEATURE_NUM; j++){
-							if (g.feature[j] = inf){
-								new_g_hyp = g;
-								for (int k = 0; k < feat[j].size; k++){
-									if (feat[j].value[k] == training_data[i].feature[j])
-										continue;
-									else{
-										new_g_hyp.feature[j] = feat[j].value[k];
+			copylist(&vs[type].generic_head, gcopy);
 
-										// ok if new_genreal_hyp is more general than specific hyp
-										s = vs[type].specific_head->hypothesis;
-										int ok = 1;
-										for (int l = 0; l < FEATURE_NUM; l++){
-											if (new_g_hyp.feature[l] != inf &&
-												s.feature[l] != -inf &&
-												new_g_hyp.feature[l] != s.feature[l]){
-												ok = 0;
-												break;
-											}
+			// minimum_generalize specific set
+			s = vs[type].specific_head->hypothesis;
+			listremove(&vs[type].specific_head, s);
+			for (int j = 0; j < FEATURE_NUM - 1; j++){
+				if (s.feature[j] == -inf){
+					s.feature[j] = training_data[i].feature[j];
+				}
+				else if (s.feature[j] != training_data[i].feature[j]){
+					s.feature[j] = inf;
+				}
+			}
+			listappend(&vs[type].specific_head, s);
+		}
+		// negative exp
+		else if (training_data[i].label == 0){
+			boundary* gcopy = NULL;
+			instance spec = vs[type].specific_head->hypothesis;
+			boundary* iterator = vs[type].generic_head;
+			while(iterator){
+				g = iterator -> hypothesis;
+				iterator = iterator -> next;
+				int flag = 0;
+				for (int j = 0; j < FEATURE_NUM - 1; j++){
+					if (g.feature[j] != training_data[i].feature[j]
+						&& g.feature[j] != inf){
+						flag = 1;
+						break;
+					}
+				}
+				if (flag == 1){
+					listappend(&gcopy, g);
+				}
+				else{
+					instance new_g_hyp;
+					for (int j = 0; j < FEATURE_NUM - 1; j++){
+						if (g.feature[j] = inf){
+							new_g_hyp = g;
+							for (int k = 0; k < feat[j].size; k++){
+								if (feat[j].value[k] == training_data[i].feature[j])
+									continue;
+								else{
+									new_g_hyp.feature[j] = feat[j].value[k];
+
+									// ok if new_genreal_hyp is more general than specific hyp
+									s = vs[type].specific_head->hypothesis;
+									int ok = 1;
+									for (int l = 0; l < FEATURE_NUM - 1; l++){
+										if (new_g_hyp.feature[l] != inf &&
+											s.feature[l] != -inf &&
+											new_g_hyp.feature[l] != s.feature[l]){
+											ok = 0;
+											break;
 										}
-										if (ok){
-											listappend(&gcopy, new_g_hyp);
-										}
+									}
+									if (ok){
+										listappend(&gcopy, new_g_hyp);
 									}
 								}
 							}
 						}
 					}
 				}
-				// empty general
-				deletelist(&vs[type].generic_head);
-				boundary* to_remove = NULL;
-				// and remove those generic which are more spec the other generic
-				// after that general = remaining generic hyp
+			}
+			// empty general
+			deletelist(&vs[type].generic_head);
+			boundary* to_remove = NULL;
+			// printlist(vs[type].generic_head);
+			// and remove those generic which are more spec the other generic
+			// after that general = remaining generic hyp
+			boundary* intertor1 = gcopy;
+			boundary* iterator2 = gcopy;
+			while(intertor1){
+				instance ins1 = intertor1->hypothesis;
+				while(iterator2){
+					instance ins2 = iterator2->hypothesis;
+					if (!equal(ins1, ins2)){
+						int ok = 1;
+						for (int j = 0; j < FEATURE_NUM - 1; j++){
+							if (ins1.feature[j] != inf &&
+
+								// could only be used because of condition none or one or any
+								ins2.feature[j] != ins2.feature[j]){
+								ok = 0;
+								break;
+							}
+						}
+						if (ok){
+							listappend(&to_remove, ins2);
+						}
+					}
+					iterator2 = iterator2->next;
+				}
+				intertor1 = intertor1->next;
+			}
+			intertor1 = gcopy;
+			iterator2 = to_remove;
+			while(intertor1){
+				instance ins1 = intertor1->hypothesis;
+				int ok = 1;
+				while(iterator2){
+					instance ins2 = iterator2->hypothesis;
+					if (equal(ins1, ins2)){
+						ok = 0;
+						break;
+					}
+					iterator2 = iterator2->next;
+				}
+				if (ok)
+					listappend(&vs[type].generic_head, ins1);
+				intertor1 = intertor1->next;
 			}
 		}
+	}		
+	
+	boundary* iterator = vs[type].generic_head;
+	while (iterator){
+		printf("general: ");
+		for (int j = 0; j < FEATURE_NUM - 1; j++){
+			int p = iterator->hypothesis.feature[j];
+			if (p==inf)
+				printf("? ");
+			else
+				printf("%d ", p);
+		}
+		iterator = iterator -> next;
+		printf("\n");
 	}
 }
 
@@ -317,6 +367,7 @@ int main(){
 	features feat[FEATURE_NUM];
 	initialize_features(feat);
 	input (training_data);
-	find_version_space (training_data, vs, feat);
+	int type = 2;
+	find_version_space (training_data, vs, feat, type);
 	// print (training_data);
 }
