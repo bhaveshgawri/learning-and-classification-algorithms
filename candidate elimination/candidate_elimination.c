@@ -167,6 +167,17 @@ void listappend(boundary** list, instance h){
 	return;
 }
 
+void deletelist(boundary** list){
+	boundary* current = *list;
+	boundary* next;
+	while (current){
+		next = current->next;
+		free(current);
+		current = next;
+	}
+	*list = NULL;
+}
+
 void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 						version_space vs[LABEL_TYPES+1],
 						features feat[FEATURE_NUM]){
@@ -271,6 +282,8 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 					}
 				}
 				// empty general
+				deletelist(&vs[type].generic_head);
+				boundary* to_remove = NULL;
 				// and remove those generic which are more spec the other generic
 				// after that general = remaining generic hyp
 			}
