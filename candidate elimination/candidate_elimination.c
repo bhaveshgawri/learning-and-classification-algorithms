@@ -15,6 +15,11 @@ bear,1,0,0,1,0,0,1,1,1,1,0,0,4,0,0,1,1
 #define FEATURE_NUM 17
 #define TRAINING_INSTANCE_NUM 4 // later change to 101
 
+typedef struct features{
+	int size;
+	int value[10];
+}features;
+
 typedef struct instance{
 	int label;
 	int feature[FEATURE_NUM];
@@ -29,6 +34,18 @@ typedef struct version_space{
 	boundary* generic_head;
 	boundary* specific_head;
 }version_space;
+
+void input(instance training_data[TRAINING_INSTANCE_NUM]){
+	char string[100];
+	for (int i=0; i<TRAINING_INSTANCE_NUM; i++){
+		scanf("%s", string);
+		for (int j = 0, k = 0; j < strlen(string); j++){
+			if (string[j] >= '0' && string[j] <= '9'){
+				training_data[i].feature[k++] = string[j] - '0';
+			}
+		}
+	}
+}
 
 void print(instance training_data[TRAINING_INSTANCE_NUM]){
 	for (int i = 0; i < TRAINING_INSTANCE_NUM; i++){
@@ -65,17 +82,6 @@ version_space initialize(version_space vs[LABEL_TYPES], int type){
 	return (version_space){.generic_head = ghead, .specific_head = shead};
 }
 
-void input(instance training_data[TRAINING_INSTANCE_NUM]){
-	char string[100];
-	for (int i=0; i<TRAINING_INSTANCE_NUM; i++){
-		scanf("%s", string);
-		for (int j = 0, k = 0; j < strlen(string); j++){
-			if (string[j] >= '0' && string[j] <= '9'){
-				training_data[i].feature[k++] = string[j] - '0';
-			}
-		}
-	}
-}
 
 void classify(instance training_data[TRAINING_INSTANCE_NUM], int type){
 	for (int j = 0; j < TRAINING_INSTANCE_NUM; j++){
@@ -86,6 +92,22 @@ void classify(instance training_data[TRAINING_INSTANCE_NUM], int type){
 			training_data[j].label = 0;
 		}
 	}
+}
+
+void printlist(boundary* list){
+	while(list){
+		printf("%d\n", list->hypothesis.feature[0]);
+		list = list->next;
+	}
+}
+
+int equal(instance h1, instance h2){
+	for (int i = 0; i < FEATURE_NUM; i++){
+		if (h1.feature[i]!=h2.feature[i]){
+			return 0;
+		}
+	}
+	return 1;
 }
 
 void copylist(boundary** newList, boundary* to_copy){
@@ -108,22 +130,6 @@ void copylist(boundary** newList, boundary* to_copy){
 			}
 		}
 	}
-}
-
-void printlist(boundary* list){
-	while(list){
-		printf("%d\n", list->hypothesis.feature[0]);
-		list = list->next;
-	}
-}
-
-int equal(instance h1, instance h2){
-	for (int i = 0; i < FEATURE_NUM; i++){
-		if (h1.feature[i]!=h2.feature[i]){
-			return 0;
-		}
-	}
-	return 1;
 }
 
 void listremove(boundary** list, instance h){
@@ -161,7 +167,9 @@ void listappend(boundary** list, instance h){
 	return;
 }
 
-void find_version_space(instance training_data[TRAINING_INSTANCE_NUM], version_space vs[LABEL_TYPES+1]){
+void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
+						version_space vs[LABEL_TYPES+1],
+						features feat[FEATURE_NUM]){
 	for (int type = 1;type <= LABEL_TYPES;type++){
 		classify(training_data, type);
 		version_space heads = initialize(vs, type);
@@ -179,11 +187,11 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM], version_s
 				boundary* iterator = vs[type].generic_head;
 				while(iterator){
 					g = iterator -> hypothesis;
-					iterator = iterator->next;
+					iterator = iterator -> next;
 					int flag = 0;
-					for (int i = 0; i < FEATURE_NUM; i++){
-						if (g.feature[i] != vs[type].generic_head->hypothesis.feature[i]
-							&& g.feature[i] != inf){
+					for (int j = 0; j < FEATURE_NUM; j++){
+						if (g.feature[j] != training_data[i].feature[j]
+							&& g.feature[j] != inf){
 							flag = 1;
 							break;
 						}
@@ -214,17 +222,88 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM], version_s
 			}
 			// negative exp
 			else if (training_data[i].label == 0){
+				boundary* gcopy = NULL;
+				instance spec = vs[type].specific_head->hypothesis;
+				boundary* iterator = vs[type].generic_head;
+				while(iterator){
+					g = iterator -> hypothesis;
+					iterator = iterator -> next;
+					int flag = 0;
+					for (int j = 0; j < FEATURE_NUM; j++){
+						if (g.feature[j] != training_data[i].feature[j]
+							&& g.feature[j] != inf){
+							flag = 1;
+							break;
+						}
+					}
+					if (flag == 1){
+						listappend(&gcopy, g);
+					}
+					else{
+						instance new_g_hyp;
+						for (int j = 0; j < FEATURE_NUM; j++){
+							if (g.feature[j] = inf){
+								new_g_hyp = g;
+								for (int k = 0; k < feat[j].size; k++){
+									if (feat[j].value[k] == training_data[i].feature[j])
+										continue;
+									else{
+										new_g_hyp.feature[j] = feat[j].value[k];
 
+										// ok if new_genreal_hyp is more general than specific hyp
+										s = vs[type].specific_head->hypothesis;
+										int ok = 1;
+										for (int l = 0; l < FEATURE_NUM; l++){
+											if (new_g_hyp.feature[l] != inf &&
+												s.feature[l] != -inf &&
+												new_g_hyp.feature[l] != s.feature[l]){
+												ok = 0;
+												break;
+											}
+										}
+										if (ok){
+											listappend(&gcopy, new_g_hyp);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				// empty general
+				// and remove those generic which are more spec the other generic
+				// after that general = remaining generic hyp
 			}
 		}
 	}
 }
 
+void initialize_features(features feat[FEATURE_NUM]){
+	int x = 0;
+	for (int i = 0; i <= 15; i++){
+		if (i == 12)
+			continue;	
+		feat[i].size = 2;
+		feat[i].value[0] = x;
+		feat[i].value[1] = 1 - x;
+	}
+	
+	feat[12].size = 5;
+	for (int i = 0; i < feat[12].size; i++){
+		feat[12].value[i] = 2*i;
+	}
+	feat[16].size = 7;
+	for (int i = 0; i < feat[16].size; i++){
+		feat[16].value[i] = i + 1;
+	}
+}
 
 int main(){
 	version_space vs[LABEL_TYPES+1];
 	instance training_data[TRAINING_INSTANCE_NUM];
+	features feat[FEATURE_NUM];
+	initialize_features(feat);
 	input (training_data);
-	find_version_space (training_data, vs);
+	find_version_space (training_data, vs, feat);
 	// print (training_data);
 }
