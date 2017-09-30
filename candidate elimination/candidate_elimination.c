@@ -11,9 +11,8 @@ bear,1,0,0,1,0,0,1,1,1,1,0,0,4,0,0,1,1
 #include <limits.h>
 
 #define inf INT_MAX
-#define LABEL_TYPES 1 // later change to 7
 #define FEATURE_NUM 17
-#define TRAINING_INSTANCE_NUM 101 // later change to 101
+#define TRAINING_INSTANCE_NUM 101// later change to 101
 
 typedef struct features{
 	int size;
@@ -73,7 +72,7 @@ version_space initialize(version_space vs){
 	ghead->hypothesis.label = -1;
 	shead->hypothesis.label = -1;
 	
-	for (int i = 0; i < FEATURE_NUM; i++){
+	for (int i = 0; i < FEATURE_NUM - 1; i++){
 		ghead->hypothesis.feature[i] = inf;
 		shead->hypothesis.feature[i] = -inf;
 	}
@@ -232,7 +231,7 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 		else if (training_data[i].label == 0){
 			boundary* gcopy = NULL;
 			boundary* iterator = vs.generic_head;
-			s = vs.specific_head->hypothesis;
+			// s = vs.specific_head->hypothesis;
 
 			while(iterator){
 				g = iterator -> hypothesis;
@@ -253,12 +252,10 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 						if (g.feature[j] = inf){
 							new_g_hyp = g;
 							for (int k = 0; k < feat[j].size; k++){
-								if (feat[j].value[k] == training_data[i].feature[j])
-									continue;
-								else{
+								// if (feat[j].size>2)printf("%d\n", feat[j].size);
+								if (feat[j].value[k] != training_data[i].feature[j]){
 									new_g_hyp.feature[j] = feat[j].value[k];
-
-									// ok if new_genreal_hyp is more general than specific hyp
+									// ok if new_genreal_hyp is more general than and consistent with specific hyp
 									int ok = 1;
 									for (int l = 0; l < FEATURE_NUM - 1; l++){
 										if (new_g_hyp.feature[l] != inf &&
@@ -284,27 +281,49 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 			// printlist(vs.generic_head);
 			// and remove those generic which are more spec the other generic
 			// after that general = remaining generic hyp
+
+			// printf("specific\n");
+			// for (int j=0;j<FEATURE_NUM-1;j++){
+			// 	int p = vs.specific_head->hypothesis.feature[j];
+			// 		if (p==inf)
+			// 			printf("? ");
+			// 		else
+			// 			printf("%d ", p);
+			// }
+			// printf("\n%d: \n", i+1);
+			// iterator = gcopy;
+			// while (iterator){
+			// 	for (int j = 0; j < FEATURE_NUM - 1; j++){
+			// 		int p = iterator->hypothesis.feature[j];
+			// 		if (p==inf)
+			// 			printf("? ");
+			// 		else
+			// 			printf("%d ", p);
+			// 	}
+			// 	iterator = iterator -> next;
+			// 	printf("\n");
+			// }
+			
+			// error in the nested loop: in the if condition
 			boundary* intertor1 = gcopy;
-			boundary* iterator2 = gcopy;
-			int gcount = 0, trcount = 0;
+			boundary* iterator2;
 			while(intertor1){
 				instance ins1 = intertor1->hypothesis;
-				gcount++;
+				boundary* iterator2 = gcopy;
 				while(iterator2){
 					instance ins2 = iterator2->hypothesis;
-					if (!equal(ins1, ins2)){
+					if (equal(ins1, ins2) == 0){
 						int ok = 1;
 						for (int j = 0; j < FEATURE_NUM - 1; j++){
 							if (ins1.feature[j] != inf &&
 
 								// could only be used because of condition none or one or any
-								ins2.feature[j] != ins2.feature[j]){
+								ins1.feature[j] != ins2.feature[j]){
 								ok = 0;
 								break;
 							}
 						}
 						if (ok){
-							trcount++;
 							listappend(&to_remove, ins2);
 						}
 					}
@@ -334,9 +353,9 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 			// deletelist(&gcopy);
 		}
 	}		
+	printf("general\n");
 	boundary* iterator = vs.generic_head;
 	while (iterator){
-		printf("general: ");
 		for (int j = 0; j < FEATURE_NUM - 1; j++){
 			int p = iterator->hypothesis.feature[j];
 			if (p==inf)
@@ -375,7 +394,7 @@ int main(){
 	features feat[FEATURE_NUM];
 	initialize_features(feat);
 	input (training_data);
-	int type = 1;
+	int type = 4;
 	find_version_space (training_data, vs, feat, type);
 	// print (training_data);
 }
