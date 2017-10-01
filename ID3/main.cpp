@@ -10,7 +10,7 @@ class Preprocessor
 {
 	private:
 		vector<vector<string>> inp;
-		vector<int> continuous_attrs_index = {0, 2, 4, 10, 11, 12};
+		vector<int>continuous_attrs_index = {0, 2, 4, 10, 11, 12};
 		map<string, vector<string>> attr_list;
 		
 		// 1-d array
@@ -91,6 +91,7 @@ class Preprocessor
 				tokens.pb(word);
 				inp.pb(tokens);
 			}
+			cout<<inp.size()<<endl;
 			cout<<"done inputting file..."<<endl;
 		}
 
@@ -153,7 +154,7 @@ class Preprocessor
 			for (int i=0;i<FEATURE_NUM;i++){
 				map<string, int> attr_count;
 				for (auto row: inp){
-					if (row[i]!="?"){
+					if (row[i] != "?"){
 						attr_count[row[i]]++;
 					}
 				}
@@ -176,6 +177,8 @@ class Preprocessor
 
 		void make_continuous(auto& in){
 			for (int idx: continuous_attrs_index){
+				/*
+				// for Heuristic #1 and #2
 				vector<pair<int, int>> temp;
 				vector<pair<int, int>> attr;
 				for (auto row: in){
@@ -209,13 +212,14 @@ class Preprocessor
 					attr.pb({temp[i].first, count1 > count0 ? 1 : 0});
 				}
 				temp.clear();
-				// for (int i=0;i<attr.size();i++){
-				// 	cout<<attr[i].first<<" "<<attr[i].second<<endl;
-				// }
+				for (int i=0;i<attr.size();i++){
+					cout<<attr[i].first<<" "<<attr[i].second<<endl;
+				}
 				// calculating 2 splits in the attr array based on the
 				// indices which will cause the maximum non-uniform distribution
 				// of outputs
 
+				// //heuristic #1 // //
 				int idx1;
 				int max1 = -inf;
 				for (int i=0;i<attr.size()-1;i++){
@@ -225,7 +229,6 @@ class Preprocessor
 						idx1 = i;
 					}
 				}
-
 				int idx2, idx3;
 				int max2 = -inf, max3 = -inf;
 				for (int i=0;i<idx1;i++){
@@ -251,34 +254,66 @@ class Preprocessor
 					hi = idx3;
 					lo = idx1;
 				}
-				cout<<lo<<" "<<hi<<endl;
-				// int idx1, idx2;
-				// double first_max = -inf, second_max = -inf;
-				// double e1 = entropy_continuous(attr, 0);
-				// double e2 = entropy_continuous(attr, 1);
-				// if (e1 >= e2){
-				// 	first_max = e1, idx1 = 0;
-				// 	second_max = e2, idx2 = 1;
-				// }
-				// else{
-				// 	first_max = e2, idx2 = 1;
-				// 	second_max = e1, idx1 = 0;
-				// }
-				// cout<<e1<<" "<<e2<< " ";
-				// for (int i = 2; i < attr.size() - 1; i++){
-				// 	double e = entropy_continuous(attr, i);
-				// 	if (e > first_max){
-				// 		second_max = first_max;
-				// 		idx2 = idx1;
 
-				// 		first_max = e;
-				// 		idx1 = i;
-				// 	}
-				// 	cout<<e<<" ";
-				// }
-				// int lo = min(idx1, idx2);
-				// int hi = max(idx1, idx2);
-				// cout<<endl<<lo<<" "<<hi<<endl;
+				// //heuristic #2 // //
+				int idx1, idx2;
+				double first_max = -inf, second_max = -inf;
+				double e1 = entropy_continuous(attr, 0, 0, v.size()-1);
+				double e2 = entropy_continuous(attr, 0, 1, v.size()-1);
+				if (e1 >= e2){
+					first_max = e1, idx1 = 0;
+					second_max = e2, idx2 = 1;
+				}
+				else{
+					first_max = e2, idx2 = 1;
+					second_max = e1, idx1 = 0;
+				}
+				for (int i = 2; i < attr.size() - 1; i++){
+					double e = entropy_continuous(attr, 0, i, v.size()-1);
+					if (e > first_max){
+						second_max = first_max;
+						idx2 = idx1;
+						first_max = e;
+						idx1 = i;
+					}
+				}
+				int lo = min(idx1, idx2);
+				int hi = max(idx1, idx2);
+				*/
+
+				// heuristic #3
+				double average=0;
+				double standard_dev = 0;
+				for (auto row: inp){
+					average += stoi(row[idx]);
+				}
+				average /= inp.size();
+				for (auto row: inp){
+					standard_dev += pow(double(stoi(row[idx])-average), 2);
+				}
+				standard_dev /= (inp.size()-1);
+				standard_dev = sqrt(standard_dev);
+
+				for (int i=0;i<inp.size();i++){
+					if (stoi(inp[i][idx]) > average+standard_dev){
+						inp[i][idx] = "high";
+					}
+					else if(stoi(inp[i][idx]) < average - standard_dev){
+						inp[i][idx] = "low";
+					}
+					else{
+						inp[i][idx] = "medium";
+					}
+				}
+
+				for (auto i: attr_list){
+					if (i.second[0]=="continuous"){
+						attr_list[i.first].pop_back();
+						attr_list[i.first].pb("low");
+						attr_list[i.first].pb("mid");
+						attr_list[i.first].pb("high");
+					}
+				}
 			}
 		}
 
