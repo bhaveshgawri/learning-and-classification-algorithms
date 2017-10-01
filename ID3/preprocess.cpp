@@ -2,7 +2,7 @@
 
 #define pb push_back	
 #define FEATURE_NUM 14
-#define PER_LINE_MISSING_THRES 0.6
+#define PER_LINE_MISSING_THRES 0.15
 #define inf INT_MAX
 using namespace std;
 
@@ -10,8 +10,6 @@ class Preprocessor
 {
 	private:
 		vector<vector<string>> inp;
-		map<string, vector<string>> attr_list;
-		map<string, pair<int, int>> continuous_splits;
 		vector<int>continuous_attrs_index = {0, 2, 4, 10, 11, 12};
 		// ^^ these are initial indecies and will change after processed attr list is 
 		// written to a file
@@ -78,31 +76,6 @@ class Preprocessor
 			cout<<"done inputting file..."<<endl;
 		}
 
-		void input_attr_list(){
-			string line;
-			ifstream infile("attr_list");
-			while(getline(infile, line)){
-				string key;
-				string word = "";
-				vector<string> tokens;
-				for (char c: line){
-					if (c!=':' && c!=' ' && c!=','){
-						word+=c;
-					}
-					if (c==':'){
-						key = word;
-						word="";
-					}
-					if (c==','){
-						tokens.pb(word);
-						word="";
-					}
-				}
-				tokens.pb(word);
-				attr_list[key] = tokens;
-			}
-		}
-
 		void assign_pos_neg_to_input(){
 			// selecting positive and negative inputs
 			for (int i=0;i<inp.size();i++){
@@ -125,7 +98,6 @@ class Preprocessor
 						missing_words++;
 					}
 				}
-				// cout<<double(missing_words)/inp[0].size()<<endl;
 				if (double(missing_words)/inp[0].size() <= PER_LINE_MISSING_THRES){
 					formatted_inp.pb(row);
 				}
@@ -288,29 +260,13 @@ class Preprocessor
 						inp[i][idx] = "medium";
 					}
 				}
-
-				for (auto i: attr_list){
-					if (i.second[0]=="continuous"){
-						attr_list[i.first].pop_back();
-						attr_list[i.first].pb("low");
-						attr_list[i.first].pb("mid");
-						attr_list[i.first].pb("high");
-					}
-				}
 			}
 		}
 
-		void resave_input_and_attr_list(){
+		void resave_input(){
+			// use this function only once
+			// todo: need to truncate '\n' from end of file
 			ofstream outfile;
-			outfile.open("attr_list");
-			for (auto i: attr_list){
-				outfile << i.first <<": ";
-				for (auto word: i.second){
-					outfile << word << ", ";
-				}
-				outfile << endl;
-			}
-			outfile.close();
 			outfile.open("test");
 			for (auto row: inp){
 				for (string word: row){
@@ -324,11 +280,10 @@ class Preprocessor
 		Preprocessor(){
 			// preprocessing and initializing functions
 			input_data();
-			input_attr_list();
 			assign_pos_neg_to_input();
 			tackle_missing();
 			make_continuous(inp);
-			// resave_input_and_attr_list();
+			// resave_input();
 		}
 		~Preprocessor(){;}
 	
