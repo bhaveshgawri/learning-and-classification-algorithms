@@ -12,7 +12,7 @@ typedef struct Node{
 	struct Node** next;
 }Node;
 
-int get_attr_num(int attr, vector<string>& inp){
+int get_attr_num(int attr, const auto& inp){
 	if (attr == 0){
 		if (inp[attr]=="low") return 1;
 		else if (inp[attr]=="medium") return 2;
@@ -160,7 +160,7 @@ int get_attr_num(int attr, vector<string>& inp){
 	}
 }
 
-void print_decision_tree(Node* head, auto& attr_val_num, int attr){
+void print_decision_tree(Node* head, const auto& attr_val_num, int attr){
 	if (head->leaf == false){
 		cout<<head->attr<<" "<<attr_val_num[head->attr]<<endl;
 		for (int i=0;i<=attr_val_num[head->attr];i++){
@@ -172,14 +172,29 @@ void print_decision_tree(Node* head, auto& attr_val_num, int attr){
 	}
 }
 
+int predict(const auto& in, Node* head){
+	if (head->leaf) return head->val;
+	else return predict(in, head->next[get_attr_num(head->attr, in)]);
+}
+
+string accuracy(const auto& in, Node* head){
+	int ok = 0;
+	for (auto row: in){
+		int predicted_val = predict(row, head);
+		if (stoi(row[TARGET]) == predicted_val){
+			ok++;
+		}
+	}
+	double accr = 100*(double(ok)/in.size());
+	return to_string(accr);
+}
+
 class ID3{
-	private:
-		set<int> used;
 	public:
-		vector<vector<string>> input_data(){
+		vector<vector<string>> input_data(string file){
 			vector<vector<string>> training_inp;
 			string line;
-			ifstream infile("test");
+			ifstream infile(file);
 			int k = 0;
 			while(getline(infile, line)){
 				string word="";
@@ -201,7 +216,7 @@ class ID3{
 			return training_inp;
 		}
 
-		bool check_all_exp(auto& training_inp, int check){
+		bool check_all_exp(const auto& training_inp, int check){
 			for (auto row: training_inp){
 				if (row[TARGET] != to_string(check)){
 					return false;
@@ -210,7 +225,7 @@ class ID3{
 			return true;
 		}
 
-		bool most_common_value(auto& training_inp){
+		bool most_common_value(const auto& training_inp){
 			int count0 = 0, count1 = 0;
 			for (auto row: training_inp){
 				if (row[TARGET] == "0"){
@@ -221,7 +236,7 @@ class ID3{
 			return count1>count0;
 		}
 
-		double entropy(auto& in){
+		double entropy(const auto& in){
 			double pos = 0, neg = 0;
 			double e=0;
 			
@@ -238,7 +253,7 @@ class ID3{
 			return e;
 		}
 
-		double inf_gain(auto& training_inp, int attr){
+		double inf_gain(const auto& training_inp, int attr){
 			// map<string, vector<vector<string>>> mp;
 
 			// for (auto row: training_inp){
@@ -288,7 +303,6 @@ class ID3{
 					max_gain_attr = i.first;
 				}
 			}
-
 			int n = attr_val_num[max_gain_attr];
 			node->leaf = false;		
 			node->attr = max_gain_attr;
@@ -315,15 +329,12 @@ class ID3{
 		}
 
 
-	ID3(){;}
+	ID3(string file){;}
 	~ID3(){;}
 
 };
 
 int main(){
-	ID3 i;
-	vector<vector<string>> training_inp = i.input_data();
-	Node* head = new Node();
 	map<int, int> attr_val_num, temp;
 		attr_val_num[0] = 3;
 		attr_val_num[1] = 8;
@@ -340,6 +351,19 @@ int main(){
 		attr_val_num[12] = 3;
 		attr_val_num[13] = 41;
 	temp = attr_val_num;
-	i.id3(training_inp, temp, head);
-	// print_decision_tree(head, attr_val_num, head->attr);
+	
+	string trainfile = "";
+	string checkfile = "";
+	ID3 i1(trainfile);
+	ID3 i2(checkfile);
+	
+	vector<vector<string>> training_inp = i1.input_data(trainfile);
+	vector<vector<string>> testing_inp = i2.input_data(checkfile);
+	
+	Node* head = new Node();
+	i1.id3(training_inp, temp, head);
+	print_decision_tree(head, attr_val_num, head->attr);
+	
+	cout<<"Accuracy on training data is: "+accuracy(training_inp, head)+"%"<<endl;
+	cout<<"Accuracy on testing data is: "+accuracy(check_inp, head)+"%"<<endl;
 }

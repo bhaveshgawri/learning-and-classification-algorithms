@@ -53,15 +53,15 @@ class Preprocessor
 		}
 
 	public:
-		void input_data(){
+		void input_data(string file){
 			string line;
-			ifstream infile("test");
+			ifstream infile(file);
 			int k = 0;
 			while(getline(infile, line)){
 				string word="";
 				vector<string> tokens;
 				for (int i=0;i<line.length();i++){
-					if (line[i]!=' ' && line[i]!=','){
+					if (line[i]!=' ' && line[i]!=',' && line[i]!='.'){
 						word+=line[i];
 					}
 					if (line[i]==','){
@@ -130,13 +130,13 @@ class Preprocessor
 		}
 
 
-		void make_continuous(auto& in){
+		void make_continuous(){
 			for (int idx: continuous_attrs_index){
 				/*
 				// for Heuristic #1 and #2
 				vector<pair<int, int>> temp;
 				vector<pair<int, int>> attr;
-				for (auto row: in){
+				for (auto row: inp){
 					temp.pb({stoi(row[idx]), stoi(row[FEATURE_NUM])});
 				}
 				sort(temp.begin(), temp.end());
@@ -263,11 +263,12 @@ class Preprocessor
 			}
 		}
 
-		void resave_input(){
+		void resave_input(string file){
 			// use this function only once
 			// todo: need to truncate '\n' from end of file
 			ofstream outfile;
-			outfile.open("test");
+			file += "_formatted";
+			outfile.open(file);
 			for (auto row: inp){
 				for (string word: row){
 					outfile << word << " ";
@@ -277,19 +278,20 @@ class Preprocessor
 			outfile.close();
 		}
 
-		Preprocessor(){
+		Preprocessor(string file){
 			// preprocessing and initializing functions
-			input_data();
+			input_data(file);
 			assign_pos_neg_to_input();
 			tackle_missing();
-			make_continuous(inp);
-			// resave_input();
+			make_continuous();
+			resave_input(file);
 		}
 		~Preprocessor(){;}
 	
 };
 
 int main(){
-	Preprocessor p;
+	string file = "";
+	Preprocessor p(file);
 	return 0;
 }
