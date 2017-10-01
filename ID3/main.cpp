@@ -10,64 +10,47 @@ class Preprocessor
 {
 	private:
 		vector<vector<string>> inp;
-		vector<int>continuous_attrs_index = {0, 2, 4, 10, 11, 12};
 		map<string, vector<string>> attr_list;
+		map<string, pair<int, int>> continuous_splits;
+		vector<int>continuous_attrs_index = {0, 2, 4, 10, 11, 12};
+		// ^^ these are initial indecies and will change after processed attr list is 
+		// written to a file
 		
 		// 1-d array
 		double entropy_continuous(vector<pair<int, int>>& in, int start, int index, int end){
-			double pos, neg;
-			pos = neg = 0;
+			double pos=0, neg = 0;
 			double  e1=0, e2=0;
 			for (int i=start;i<=index;i++){
-				if (in[i].second == 1){
-					pos++;
-				}
+				if (in[i].second == 1) pos++;
 				else neg++;
 			}
 			pos /= (pos+neg);
 			neg /= (pos+neg);
-			if (!pos)
-				e1 = -double(neg)*log2(neg);
-			else if (!neg)
-				e1 = -double(pos)*log2(pos);
-			else
-				e1 = -double(pos)*log2(pos)-double(neg)*log2(neg);
+			if (neg!=0) e1 += -double(neg)*log2(neg);
+			if (pos!=0) e1 += -double(pos)*log2(pos);
 			pos = neg = 0;
 			for (int i=index+1;i<=end;i++){
-				if (in[i].second == 1){
-					pos++;
-				}
+				if (in[i].second == 1)pos++;
 				else neg++;
 			}
 			pos /= (pos+neg);
 			neg /= (pos+neg);
-			if (!pos)
-				e2 = -double(neg)*log2(neg);
-			else if (!neg)
-				e2 = -double(pos)*log2(pos);
-			else
-				e2 = -double(pos)*log2(pos)-double(neg)*log2(neg);
+			if (neg!=0) e2 += -double(neg)*log2(neg);
+			if (pos!=0)	e2 += -double(pos)*log2(pos);
 			return (e1+e2)/2;
 		}
 		// 2-d array
 		double entropy(auto& in){
-			double pos, neg;
-			pos = neg = 0;
+			double pos = 0, neg = 0;
 			for (auto row: in){
-				if (row[FEATURE_NUM] == "1"){
-					pos++;
-				}
+				if (row[FEATURE_NUM] == "1") pos++;
 				else neg++;
 			}
 			pos /= (pos+neg);
 			neg /= (pos+neg);
 			double e=0;
-			if (!pos)
-				e = -double(neg)*log2(neg);
-			else if (!neg)
-				e = -double(pos)*log2(pos);
-			else
-				e = -double(pos)*log2(pos)-double(neg)*log2(neg);
+			if (neg!=0) e += -double(neg)*log2(neg);
+			if (pos!=0) e += -double(pos)*log2(pos);
 			return e;
 		}
 
@@ -317,7 +300,26 @@ class Preprocessor
 			}
 		}
 
-
+		void resave_input_and_attr_list(){
+			ofstream outfile;
+			outfile.open("attr_list");
+			for (auto i: attr_list){
+				outfile << i.first <<": ";
+				for (auto word: i.second){
+					outfile << word << ", ";
+				}
+				outfile << endl;
+			}
+			outfile.close();
+			outfile.open("test");
+			for (auto row: inp){
+				for (string word: row){
+					outfile << word << " ";
+				}
+				outfile << endl;
+			}
+			outfile.close();
+		}
 
 		Preprocessor(){
 			// preprocessing and initializing functions
@@ -326,6 +328,7 @@ class Preprocessor
 			assign_pos_neg_to_input();
 			tackle_missing();
 			make_continuous(inp);
+			// resave_input_and_attr_list();
 		}
 		~Preprocessor(){;}
 	
