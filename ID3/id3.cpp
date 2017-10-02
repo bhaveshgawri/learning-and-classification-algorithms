@@ -426,7 +426,7 @@ vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int random
 			int random_num = rand()%dataset.size();
 			random_training_exp.pb(dataset[random_num]);		
 		}
-		int attr_number = 5;
+		int attr_number = 10;
 		set<int> selected_rand_nums;
 		while(attr_number){
 			int random_num = rand()%attr_val_num.size();
@@ -441,24 +441,26 @@ vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int random
 		i1.id3(random_training_exp, random_attributes, head);
 		randomForest.pb(head);
 		// print_decision_tree(head, random_attributes, head->attr);
-		cout<<"done tree "<<i+1<<endl;
+		cout<<"created tree "<<i+1<<" of "<<randomTrees<<endl;
 	}
 	return randomForest;
 }
 
-void random_accuracy(auto& dataset, auto& randomForest){
-	int neg = 0, pos = 0;
+double random_accuracy(auto& dataset, auto& randomForest){
+	double neg = 0, pos = 0;
 	for (auto row: dataset){
 		int count0=0, count1=0;
 		for (Node* randomTree: randomForest){
 			int predicted_val = predict(row, randomTree);
-			if (predicted_val == 1) count1++;
-			else count0++;
+		
+				if (predicted_val == 1) count1++;
+				else count0++;
 		}
-		if (count0>count1) neg++;
-		else pos++;
+		if (count0>count1 && stoi(row[TARGET])==1) neg+=1;
+		else if(count0<count1 && stoi(row[TARGET])==0) neg+=1;
+		else pos+=1;
 	}
-	cout<<double(pos)/(pos+neg);
+	return (pos)/(pos+neg);
 }
 
 
@@ -492,26 +494,26 @@ int main(){
 	vector<vector<string>> validating_inp = i2.input_data(validfile);
 	vector<vector<string>> testing_inp = i3.input_data(testfile);
 	
-	// Node* head = new Node();
-	// i1.id3(training_inp, temp, head);
-	// // print_decision_tree(head, attr_val_num, head->attr);
+	Node* head = new Node();
+	i1.id3(training_inp, temp, head);
+	// print_decision_tree(head, attr_val_num, head->attr);
 
-	// cout<<"Accuracy on training data is: "+to_string(accuracy(training_inp, head))+"%"<<endl;
-	// cout<<"Accuracy on validating data is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
-	// cout<<"Accuracy on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
+	cout<<"Accuracy with ID3 on single decision tree on training data is: "+to_string(accuracy(training_inp, head))+"%"<<endl;
+	cout<<"Accuracy with ID3 on single decision tree on validating data is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
+	cout<<"Accuracy with ID3 on single decision tree on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
 	
-	// double accr = accuracy(validating_inp, head);
-	// cout<<"Accuracy on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
-	// cout<<"prunning..."<<endl;
-	// // prune1() is overloaded - pass by ref or pass by val
-	// head = prune1(head, accr, validating_inp, attr_val_num);
-	// // prune1(&head, accr, validating_inp, attr_val_num);
-	// // prune2(&head, &head, accr, validating_inp, attr_val_num);
-	// cout<<"prunned..."<<endl;
-	// cout<<"Accuracy on validating data is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
-	// cout<<"Accuracy on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
+	double accr = accuracy(validating_inp, head);
+	cout<<"prunning..."<<endl;
+	// prune1() is overloaded - pass by ref or pass by val
+	head = prune1(head, accr, validating_inp, attr_val_num);
+	// prune1(&head, accr, validating_inp, attr_val_num);
+	// prune2(&head, &head, accr, validating_inp, attr_val_num);
+	cout<<"prunned..."<<endl;
+	cout<<"Accuracy on validating data after prunning is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
+	cout<<"Accuracy on testing data after prunning is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
 
-	int randomTrees = 50;
+	int randomTrees = 70;
 	vector<Node*> randomForest = create_random_forest(training_inp, attr_val_num, randomTrees);
-	random_accuracy(testing_inp, randomForest);
+	double rand_accr = random_accuracy(testing_inp, randomForest);
+	cout<<"Accuracy with random forest on test data: "<<rand_accr*100<<"%"<<endl;
 }
