@@ -160,10 +160,28 @@ int get_attr_num(int attr, const auto& inp){
 	}
 }
 
-void print_decision_tree(Node* head, const auto& attr_val_num, int attr){
+int predict(const auto& in, Node* head){
+	if (head->leaf) return head->val;
+	else return predict(in, head->next[get_attr_num(head->attr, in)]);
+}
+
+double accuracy(auto& in, Node* head){
+	int ok = 0;
+	for (auto row: in){
+		int predicted_val = predict(row, head);
+		if (stoi(row[TARGET]) == predicted_val){
+			ok++;
+		}
+	}
+	ok *= 100;
+	double accr = double(ok)/in.size();
+	return accr;
+}
+
+void print_decision_tree(Node* head, auto& attr_val_num, int attr){
 	if (head->leaf == false){
 		cout<<head->attr<<" "<<attr_val_num[head->attr]<<endl;
-		for (int i=0;i<=attr_val_num[head->attr];i++){
+		for (int i=1;i<=attr_val_num[head->attr];i++){
 			print_decision_tree(head->next[i], attr_val_num, head->attr);
 		}
 	}
@@ -172,22 +190,81 @@ void print_decision_tree(Node* head, const auto& attr_val_num, int attr){
 	}
 }
 
-int predict(const auto& in, Node* head){
-	if (head->leaf) return head->val;
-	else return predict(in, head->next[get_attr_num(head->attr, in)]);
+double remove_node_and_test(Node* head, Node* node, auto& inp, auto& attr_val_num){
+	int isLeaf = 0;
+	if (node->leaf)
+		isLeaf = 1;
+	node->leaf = true;
+	double accr = accuracy(inp, head);
+	// if (accr>80)
+	// 	cout<<accr;
+	if (!isLeaf){
+		node->leaf = false;
+	}
+	return accr;
 }
 
-string accuracy(const auto& in, Node* head){
-	int ok = 0;
-	for (auto row: in){
-		int predicted_val = predict(row, head);
-		if (stoi(row[TARGET]) == predicted_val){
-			ok++;
+pair<double, Node*> prune_tree(Node* head, Node* node, auto& inp, auto& attr_val_num){
+	double accr = remove_node_and_test(head, node, inp, attr_val_num);
+	if (node->leaf){
+		return {accr, node};
+	}
+	
+	pair<double, Node*> to_remove = {accr, node};
+	for (int i = 1;i <= attr_val_num[node->attr];i++){
+		pair<double, Node*> new_arrc = prune_tree(head, node->next[i], inp, attr_val_num);
+		if (new_arrc.first > accr){
+			to_remove = new_arrc;
 		}
 	}
-	double accr = 100*(double(ok)/in.size());
-	return to_string(accr);
+	return to_remove;
 }
+// this pruning tech increases the accuracy on testing data but is quite costly 
+Node* prune1(Node* head, double accr, auto& training_inp, auto& attr_val_num){
+	double prev_accr = accr;
+	pair<double, Node*> prune_output = prune_tree(head, head, training_inp, attr_val_num);
+	
+	while(prune_output.first > prev_accr){
+		prune_output.second->leaf = true;
+		prev_accr = prune_output.first;
+		prune_output = prune_tree(head, head, training_inp, attr_val_num);
+	}
+	return head;
+}
+
+void prune1(Node** head, double accr, auto& training_inp, auto& attr_val_num){
+	double prev_accr = accr;
+	pair<double, Node*> prune_output = prune_tree(*head, *head, training_inp, attr_val_num);
+	
+	while(prune_output.first > prev_accr){
+		prune_output.second->leaf = true;
+		prev_accr = prune_output.first;
+		prune_output = prune_tree(*head, *head, training_inp, attr_val_num);
+	}
+}
+
+// this pruning technique may slightly decrease the accuracy
+/*void prune2(Node** head, Node** node, double& accr, auto& inp, auto& attr_val_num){
+	if ((*node)->leaf){
+		return;
+	}
+	else{
+		for (int i=1; i<=attr_val_num[(*node)->attr]; i++){
+			prune(head, &((*node)->next[i]), accr, inp, attr_val_num);
+		}
+		(*node)->leaf = true;
+		double new_accr = accuracy(inp, *head);
+		cout<<accr<<" ";
+		if (new_accr > accr){
+			accr = new_accr;
+		}
+		else{
+			(*node)->leaf = false;
+		}
+		return;
+	}
+}*/
+
 
 class ID3{
 	public:
@@ -278,7 +355,7 @@ class ID3{
 			return E;
 		}
 
-		void id3(auto& training_inp, auto& attr_val_num, Node* node){
+		void id3(auto& training_inp, auto attr_val_num, Node* node){
 			if (check_all_exp(training_inp, true)){
 				node->leaf = true;
 				node->val = true;
@@ -289,13 +366,13 @@ class ID3{
 				node->val = false;
 				return;
 			}
-			if (!attr_val_num.size()){
+			if (attr_val_num.size() == 0){
 				node->leaf = true;
 				node->val = most_common_value(training_inp);
 				return;
 			}
 			double max_gain = 0;
-			int max_gain_attr = -1;
+			int max_gain_attr = (*attr_val_num.begin()).first;
 			for (auto i: attr_val_num){
 				double gain = inf_gain(training_inp, i.first);
 				if (gain > max_gain){
@@ -307,7 +384,7 @@ class ID3{
 			node->leaf = false;		
 			node->attr = max_gain_attr;
 			node->next = new Node* [n+1];
-			for (int i=0; i<=n;i++){
+			for (int i=1; i<=n;i++){
 				Node* newNode = new Node();
 				node->next[i] = newNode;
 
@@ -352,18 +429,34 @@ int main(){
 		attr_val_num[13] = 41;
 	temp = attr_val_num;
 	
-	string trainfile = "";
-	string checkfile = "";
+	string trainfile = "train_formatted";
+	string validfile = "valid_formatted";
+	string testfile  = "test_formatted";
 	ID3 i1(trainfile);
-	ID3 i2(checkfile);
+	ID3 i2(validfile);
+	ID3 i3(testfile);
 	
 	vector<vector<string>> training_inp = i1.input_data(trainfile);
-	vector<vector<string>> testing_inp = i2.input_data(checkfile);
+	vector<vector<string>> validating_inp = i2.input_data(validfile);
+	vector<vector<string>> testing_inp = i3.input_data(testfile);
 	
 	Node* head = new Node();
 	i1.id3(training_inp, temp, head);
-	print_decision_tree(head, attr_val_num, head->attr);
+	// print_decision_tree(head, attr_val_num, head->attr);
+
+	cout<<"Accuracy on training data is: "+to_string(accuracy(training_inp, head))+"%"<<endl;
+	cout<<"Accuracy on validating data is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
+	cout<<"Accuracy on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
 	
-	cout<<"Accuracy on training data is: "+accuracy(training_inp, head)+"%"<<endl;
-	cout<<"Accuracy on testing data is: "+accuracy(check_inp, head)+"%"<<endl;
+	double accr = accuracy(validating_inp, head);
+	
+	
+	cout<<"prunning..."<<endl;
+	// prune1() is overloaded - pass by ref or pass by val
+	head = prune1(head, accr, validating_inp, attr_val_num);
+	// prune1(&head, accr, validating_inp, attr_val_num);
+	// prune2(&head, &head, accr, validating_inp, attr_val_num);
+	cout<<"prunned..."<<endl;
+	cout<<"Accuracy on validating data is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
+	cout<<"Accuracy on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
 }

@@ -291,7 +291,9 @@ class Preprocessor
 };
 
 int main(){
-	string file = "";
+	cout<<"enter file path to preprocess: ";
+	string file;
+	cin>>file;
 	Preprocessor p(file);
 	return 0;
 }
