@@ -6,6 +6,8 @@
 #define inf INT_MAX
 using namespace std;
 
+/*This class contains functions to preprocess
+the dataset for it to be used by the ID3 algorithm*/
 class Preprocessor
 {
 	private:
@@ -14,8 +16,11 @@ class Preprocessor
 		// ^^ these are initial indecies and will change after processed attr list is 
 		// written to a file
 		
-		// 1-d array
+		/*This function calculates the entropy of the input
+		data to be used to make continuous valued attributes
+		discrete*/
 		double entropy_continuous(vector<pair<int, int>>& in, int start, int index, int end){
+		// 1-d array
 			double pos=0, neg = 0;
 			double  e1=0, e2=0;
 			for (int i=start;i<=index;i++){
@@ -37,8 +42,9 @@ class Preprocessor
 			if (pos!=0)	e2 += -double(pos)*log2(pos);
 			return (e1+e2)/2;
 		}
-		// 2-d array
+		/*Calculates the entropy of the training data*/
 		double entropy(auto& in){
+		// 2-d array
 			double pos = 0, neg = 0;
 			for (auto row: in){
 				if (row[FEATURE_NUM] == "1") pos++;
@@ -53,6 +59,8 @@ class Preprocessor
 		}
 
 	public:
+		/*This function reads the input data from the file
+		and remove `,` from it*/
 		void input_data(string file){
 			string line;
 			ifstream infile(file);
@@ -76,6 +84,8 @@ class Preprocessor
 			cout<<"done inputting file..."<<endl;
 		}
 
+		/*This function assigns 1 to row if salary >50k
+		and 0 otherwise*/
 		void assign_pos_neg_to_input(){
 			// selecting positive and negative inputs
 			for (int i=0;i<inp.size();i++){
@@ -88,6 +98,8 @@ class Preprocessor
 			}
 		}
 
+		/*This function replaces the empty spaces from the 
+		attribute values with the most occuring value*/
 		void tackle_missing(){
 			// removeing those rows having more '?' than threshold
 			vector<vector<string>> formatted_inp;
@@ -129,7 +141,11 @@ class Preprocessor
 			}
 		}
 
-
+		/*This function makes the continuous valued attributes
+		discrete:
+		3 Heuristics have been mensioned but this function uses 
+		the 3rd heuristic
+		*/
 		void make_continuous(){
 			for (int idx: continuous_attrs_index){
 				/*
@@ -263,6 +279,8 @@ class Preprocessor
 			}
 		}
 
+		/*This function saves the formatted dataset into a new file
+		to be used by the ID3 algorithm*/
 		void resave_input(string file){
 			// use this function only once
 			// todo: need to truncate '\n' from end of file

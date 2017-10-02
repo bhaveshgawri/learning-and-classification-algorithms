@@ -2,7 +2,7 @@
 
 #define pb push_back
 #define TARGET 14
-#define USE_SPLIT_INFO 1
+#define USE_SPLIT_INFO 0
 
 using namespace std;
 
@@ -12,7 +12,8 @@ typedef struct Node{
 	bool val;
 	struct Node** next;
 }Node;
-
+/*Returns the corresponding value associated with
+each type of attributes*/
 int get_attr_num(int attr, const auto& inp){
 	if (attr == 0){
 		if (inp[attr]=="low") return 1;
@@ -161,24 +162,35 @@ int get_attr_num(int attr, const auto& inp){
 	}
 }
 
+/*Checks whether the corresponding tuple of atribute
+value is true in accordance with the decision thee*/
 int predict(const auto& in, Node* head){
 	if (head->leaf) return head->val;
 	else return predict(in, head->next[get_attr_num(head->attr, in)]);
 }
 
-double accuracy(auto& in, Node* head){
-	int ok = 0;
+/*This function finds accuracy of prediction along with
+precion and recall values using false/true - pos/neg */
+auto accuracy(auto& in, Node* head){
+	double true_pos = 0, false_pos = 0;
+	double true_neg = 0, false_neg = 0;
+	int count0=0, count1=0;
 	for (auto row: in){
 		int predicted_val = predict(row, head);
-		if (stoi(row[TARGET]) == predicted_val){
-			ok++;
-		}
+		if (predicted_val==1 && stoi(row[TARGET])==1) true_pos+=1;
+		else if (predicted_val==0 && stoi(row[TARGET])==0) true_neg+=1;
+		else if(predicted_val==1 && stoi(row[TARGET])==0) false_pos+=1;
+		else if (predicted_val==0 && stoi(row[TARGET])==1) false_neg+=1;
 	}
-	ok *= 100;
-	double accr = double(ok)/in.size();
-	return accr;
+	double accr = (true_pos+true_neg)/(false_pos+false_neg+true_neg+true_pos);
+	double precision = true_pos/(true_pos+false_pos);
+	double recall = true_pos/(true_pos+false_neg);
+	auto t = make_tuple(accr, precision, recall);
+	return t;
 }
 
+/*This funtion prints the decision tree with value and attr
+type of each node of the decision tree*/
 void print_decision_tree(Node* head, auto& attr_val_num, int attr){
 	if (head->leaf == false){
 		cout<<head->attr<<" "<<attr_val_num[head->attr]<<endl;
@@ -191,12 +203,15 @@ void print_decision_tree(Node* head, auto& attr_val_num, int attr){
 	}
 }
 
+/*This function calculates the accuracy of decision tree
+ when subtrees of `node` are removed */
 double remove_node_and_test(Node* head, Node* node, auto& inp, auto& attr_val_num){
 	int isLeaf = 0;
 	if (node->leaf)
 		isLeaf = 1;
 	node->leaf = true;
-	double accr = accuracy(inp, head);
+	auto t = accuracy(inp, head);
+	double accr = get<0>(t);
 	// if (accr>80)
 	// 	cout<<accr;
 	if (!isLeaf){
@@ -205,6 +220,8 @@ double remove_node_and_test(Node* head, Node* node, auto& inp, auto& attr_val_nu
 	return accr;
 }
 
+/*This function interates through all nodes of a tree and
+checks which node to remove to get max accuracy*/
 pair<double, Node*> prune_tree(Node* head, Node* node, auto& inp, auto& attr_val_num){
 	double accr = remove_node_and_test(head, node, inp, attr_val_num);
 	if (node->leaf){
@@ -220,8 +237,10 @@ pair<double, Node*> prune_tree(Node* head, Node* node, auto& inp, auto& attr_val
 	}
 	return to_remove;
 }
-// this pruning tech increases the accuracy on testing data but is quite costly 
+
+/*This functions prunes the tree to increase the prediction accuracy*/
 Node* prune1(Node* head, double accr, auto& training_inp, auto& attr_val_num){
+// this pruning tech increases the accuracy on testing data but is quite costly 
 	double prev_accr = accr;
 	pair<double, Node*> prune_output = prune_tree(head, head, training_inp, attr_val_num);
 	
@@ -232,7 +251,7 @@ Node* prune1(Node* head, double accr, auto& training_inp, auto& attr_val_num){
 	}
 	return head;
 }
-
+/*Overloaded form of Node* prune1()*/
 void prune1(Node** head, double accr, auto& training_inp, auto& attr_val_num){
 	double prev_accr = accr;
 	pair<double, Node*> prune_output = prune_tree(*head, *head, training_inp, attr_val_num);
@@ -244,18 +263,20 @@ void prune1(Node** head, double accr, auto& training_inp, auto& attr_val_num){
 	}
 }
 
+/*This functions prunes the tree to increase the prediction accuracy*/
+void prune2(Node** head, Node** node, double& accr, auto& inp, auto& attr_val_num){
 // this pruning technique may slightly decrease the accuracy
-/*void prune2(Node** head, Node** node, double& accr, auto& inp, auto& attr_val_num){
 	if ((*node)->leaf){
 		return;
 	}
 	else{
 		for (int i=1; i<=attr_val_num[(*node)->attr]; i++){
-			prune(head, &((*node)->next[i]), accr, inp, attr_val_num);
+			prune2(head, &((*node)->next[i]), accr, inp, attr_val_num);
 		}
 		(*node)->leaf = true;
-		double new_accr = accuracy(inp, *head);
-		cout<<accr<<" ";
+		auto t = accuracy(inp, *head);
+		double new_accr = get<0>(t);
+		// cout<<accr<<" ";
 		if (new_accr > accr){
 			accr = new_accr;
 		}
@@ -264,10 +285,12 @@ void prune1(Node** head, double accr, auto& training_inp, auto& attr_val_num){
 		}
 		return;
 	}
-}*/
-
+}
+/*This class contains functions to implement ID3 algorithm*/
 class ID3{
 	public:
+		/*This function inputs data from a file to a 2-d vector
+		of strings*/
 		vector<vector<string>> input_data(string file){
 			vector<vector<string>> training_inp;
 			string line;
@@ -293,6 +316,7 @@ class ID3{
 			return training_inp;
 		}
 
+		/*checks whether all the training examples are positive or negative*/
 		bool check_all_exp(const auto& training_inp, int check){
 			for (auto row: training_inp){
 				if (row[TARGET] != to_string(check)){
@@ -302,6 +326,8 @@ class ID3{
 			return true;
 		}
 
+		/*Finds whether most of the examples of training input are
+		positive or negative*/
 		bool most_common_value(const auto& training_inp){
 			int count0 = 0, count1 = 0;
 			for (auto row: training_inp){
@@ -313,6 +339,7 @@ class ID3{
 			return count1>count0;
 		}
 
+		/*This function calculates the entropy of the training input*/
 		double entropy(const auto& in){
 			double pos = 0, neg = 0;
 			double e=0;
@@ -330,18 +357,10 @@ class ID3{
 			return e;
 		}
 
+		/*This function calculates information gain value OR 
+		information gain ratio wrt `attr` depending on whether
+		USE_SPLIT_INFO is set or not*/
 		double inf_gain(const auto& training_inp, int attr){
-			// map<string, vector<vector<string>>> mp;
-
-			// for (auto row: training_inp){
-			// 	mp[row[attr]].pb(row);
-			// }
-			// double E = entropy(training_inp);
-			// for (auto i: mp){
-			// 	double e = entropy(i.second);
-			// 	E -= ((double)i.second.size()/training_inp.size())*e;
-			// }
-			// return E;
 			map<int, vector<vector<string>>> mp;
 
 			for (auto row: training_inp){
@@ -349,6 +368,7 @@ class ID3{
 			}
 			double E = entropy(training_inp);
 			double splitInfo = 0;
+			
 			for (auto i: mp){
 				double e = entropy(i.second);
 				E -= ((double)i.second.size()/training_inp.size())*e;
@@ -359,22 +379,28 @@ class ID3{
 			else return E;
 		}
 
+		/*implementation of ID3 algorithm*/
 		void id3(auto& training_inp, auto attr_val_num, Node* node){
+			// check if all are positive
 			if (check_all_exp(training_inp, true)){
 				node->leaf = true;
 				node->val = true;
 				return;
 			}
+			// check if all are negative
 			if (check_all_exp(training_inp, false)){
 				node->leaf = true;
 				node->val = false;
 				return;
 			}
+			// find the most common value
 			if (attr_val_num.size() == 0){
 				node->leaf = true;
 				node->val = most_common_value(training_inp);
 				return;
 			}
+
+			// find highest information gain atrribute
 			double max_gain = 0;
 			int max_gain_attr = (*attr_val_num.begin()).first;
 			for (auto i: attr_val_num){
@@ -388,20 +414,25 @@ class ID3{
 			node->leaf = false;		
 			node->attr = max_gain_attr;
 			node->next = new Node* [n+1];
+			// iterate through the max gain attribute values
 			for (int i=1; i<=n;i++){
 				Node* newNode = new Node();
 				node->next[i] = newNode;
 
 				vector<vector<string>> newData;
+				// create new training exp for that child
 				for (int j=0;j<training_inp.size();j++){
 					if (get_attr_num(max_gain_attr, training_inp[j]) == i){
 						newData.pb(training_inp[j]);
 					}
 				}
+				// if size of new dataset if zero make it leaf
 				if (newData.size() == 0){
 					newNode->leaf = true;
 					newNode->val = most_common_value(training_inp);
 				}
+				// otherwise recurse and delete max gain attr from
+				// map so that it won't be used again
 				else{
 					attr_val_num.erase(max_gain_attr);
 					id3(newData, attr_val_num, newNode);
@@ -414,11 +445,12 @@ class ID3{
 	~ID3(){;}
 
 };
-
+/*This function created a random forest*/
 vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int randomTrees){
 	vector<Node*> randomForest;
 	srand(time(NULL));
 	for (int i = 0;i<randomTrees;i++){
+		// make random training examples
 		int training_exp = dataset.size();
 		vector<vector<string>> random_training_exp;
 		map<int, int> random_attributes;
@@ -426,6 +458,8 @@ vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int random
 			int random_num = rand()%dataset.size();
 			random_training_exp.pb(dataset[random_num]);		
 		}
+		
+		// make random attributes
 		int attr_number = 10;
 		set<int> selected_rand_nums;
 		while(attr_number){
@@ -436,34 +470,39 @@ vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int random
 				random_attributes[random_num] = attr_val_num[random_num];
 			}
 		}
+		// create and store the head node
 		Node* head = new Node();
 		ID3 i1;
 		i1.id3(random_training_exp, random_attributes, head);
 		randomForest.pb(head);
-		// print_decision_tree(head, random_attributes, head->attr);
 		cout<<"created tree "<<i+1<<" of "<<randomTrees<<endl;
 	}
 	return randomForest;
 }
-
-double random_accuracy(auto& dataset, auto& randomForest){
-	double neg = 0, pos = 0;
+/*This function finds accuracy of prediction in the 
+random forest along with precion and recall values 
+using false/true - pos/neg */
+auto random_accuracy(auto& dataset, auto& randomForest){
+	double true_pos = 0, false_pos = 0;
+	double true_neg = 0, false_neg = 0;
 	for (auto row: dataset){
 		int count0=0, count1=0;
 		for (Node* randomTree: randomForest){
 			int predicted_val = predict(row, randomTree);
-		
-				if (predicted_val == 1) count1++;
-				else count0++;
+			if (predicted_val == 1) count1++;
+			else count0++;
 		}
-		if (count0>count1 && stoi(row[TARGET])==1) neg+=1;
-		else if(count0<count1 && stoi(row[TARGET])==0) neg+=1;
-		else pos+=1;
+		if (count0>count1 && stoi(row[TARGET])==1) false_neg+=1;
+		else if(count0<count1 && stoi(row[TARGET])==0) false_pos+=1;
+		else if (count0>count1 && stoi(row[TARGET])==0) true_pos+=1;
+		else if (count0<count1 && stoi(row[TARGET])==1) true_neg+=1;
 	}
-	return (pos)/(pos+neg);
+	double accr = (true_pos+true_neg)/(false_pos+false_neg+true_neg+true_pos);
+	double precision = true_pos/(true_pos+false_pos);
+	double recall = true_pos/(true_pos+false_neg);
+	auto t = make_tuple(accr, precision, recall);
+	return t;
 }
-
-
 
 int main(){
 	map<int, int> attr_val_num, temp;
@@ -498,22 +537,47 @@ int main(){
 	i1.id3(training_inp, temp, head);
 	// print_decision_tree(head, attr_val_num, head->attr);
 
-	cout<<"Accuracy with ID3 on single decision tree on training data is: "+to_string(accuracy(training_inp, head))+"%"<<endl;
-	cout<<"Accuracy with ID3 on single decision tree on validating data is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
-	cout<<"Accuracy with ID3 on single decision tree on testing data is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
-	
-	double accr = accuracy(validating_inp, head);
+	auto t =  accuracy(testing_inp, head);
+	double accr = get<0>(t);
+	double prec = get<1>(t);
+	double recl = get<2>(t);
+	// 1 DECISION TREE
+	cout<<"Accuracy with ID3 on single decision tree on testing data is: "<<accr*100<<"%"<<endl;
+	cout<<"Precision with ID3 on single decision tree on testing data is: "<<prec*100<<"%"<<endl;
+	cout<<"Recall with ID3 on single decision tree on testing data is: "<<recl*100<<"%"<<endl;
+	cout<<"F-Measure with ID3 on single decision tree on testing data is: "<<(2*prec*recl)/(prec+recl)<<endl;
+
+	// REDUCED PRUNNING ERROR 
+	cout<<endl<<endl;
 	cout<<"prunning..."<<endl;
+	t = accuracy(validating_inp, head);
+	accr = get<0>(t);
 	// prune1() is overloaded - pass by ref or pass by val
-	head = prune1(head, accr, validating_inp, attr_val_num);
-	// prune1(&head, accr, validating_inp, attr_val_num);
+	// head = prune1(head, accr, validating_inp, attr_val_num);
+	prune1(&head, accr, validating_inp, attr_val_num);
 	// prune2(&head, &head, accr, validating_inp, attr_val_num);
 	cout<<"prunned..."<<endl;
-	cout<<"Accuracy on validating data after prunning is: "+to_string(accuracy(validating_inp, head))+"%"<<endl;
-	cout<<"Accuracy on testing data after prunning is: "+to_string(accuracy(testing_inp, head))+"%"<<endl;
+	
+	t = accuracy(testing_inp, head);
+	accr = get<0>(t);
+	prec = get<1>(t);
+	recl = get<2>(t);
+	cout<<"Accuracy on testing data after prunning is: "<<accr*100<<"%"<<endl;
+	cout<<"Precision on tesing data after prunning is: "<<prec*100<<"%"<<endl;
+	cout<<"Recall on tesing data after prunning is: "<<recl*100<<"%"<<endl;
+	cout<<"F-Measure on tesing data after prunning is: "<<(2*prec*recl)/(prec+recl)<<endl;
+	cout<<endl<<endl;
 
+	// RANDOM FOREST
 	int randomTrees = 70;
+	cout<<"generating random forest..."<<endl;
 	vector<Node*> randomForest = create_random_forest(training_inp, attr_val_num, randomTrees);
-	double rand_accr = random_accuracy(testing_inp, randomForest);
+	t =  random_accuracy(testing_inp, randomForest);
+	double rand_accr = get<0>(t);
+	double rand_prec = get<1>(t);
+	double rand_recl = get<2>(t);
 	cout<<"Accuracy with random forest on test data: "<<rand_accr*100<<"%"<<endl;
+	cout<<"Precision with random forest on test data: "<<rand_prec*100<<"%"<<endl;
+	cout<<"Recall with random forest on test data: "<<rand_recl*100<<"%"<<endl;
+	cout<<"F-Measure with random forest on test data: "<<(2*rand_prec*rand_recl)/(rand_prec + rand_recl)<<endl;
 }
