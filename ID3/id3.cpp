@@ -3,6 +3,10 @@
 #define pb push_back
 #define TARGET 14
 #define USE_SPLIT_INFO 0
+#define RANDOM_SIZE_RATIO 10
+#define TREES 100
+#define ATTRIBUTES 4
+
 
 using namespace std;
 
@@ -256,7 +260,10 @@ void prune1(Node** head, double accr, auto& training_inp, auto& attr_val_num){
 	double prev_accr = accr;
 	pair<double, Node*> prune_output = prune_tree(*head, *head, training_inp, attr_val_num);
 	
-	while(prune_output.first > prev_accr){
+	int count = 0;
+	while(prune_output.first > prev_accr && count < 100){
+		count++;
+		cout<<"Iteration: "<<count<<endl;
 		prune_output.second->leaf = true;
 		prev_accr = prune_output.first;
 		prune_output = prune_tree(*head, *head, training_inp, attr_val_num);
@@ -451,7 +458,7 @@ vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int random
 	srand(time(NULL));
 	for (int i = 0;i<randomTrees;i++){
 		// make random training examples
-		int training_exp = dataset.size();
+		int training_exp = dataset.size()/RANDOM_SIZE_RATIO;
 		vector<vector<string>> random_training_exp;
 		map<int, int> random_attributes;
 		while(training_exp--){
@@ -460,7 +467,7 @@ vector<Node*> create_random_forest(auto& dataset, auto& attr_val_num, int random
 		}
 		
 		// make random attributes
-		int attr_number = 10;
+		int attr_number = ATTRIBUTES;
 		set<int> selected_rand_nums;
 		while(attr_number){
 			int random_num = rand()%attr_val_num.size();
@@ -523,7 +530,7 @@ int main(){
 	temp = attr_val_num;
 	
 	string trainfile = "train_formatted";
-	string validfile = "valid_formatted";
+	string validfile = "validate_formatted";
 	string testfile  = "test_formatted";
 	ID3 i1(trainfile);
 	ID3 i2(validfile);
@@ -554,8 +561,8 @@ int main(){
 	accr = get<0>(t);
 	// prune1() is overloaded - pass by ref or pass by val
 	// head = prune1(head, accr, validating_inp, attr_val_num);
-	prune1(&head, accr, validating_inp, attr_val_num);
-	// prune2(&head, &head, accr, validating_inp, attr_val_num);
+	// prune1(&head, accr, validating_inp, attr_val_num);
+	prune2(&head, &head, accr, validating_inp, attr_val_num);
 	cout<<"prunned..."<<endl;
 	
 	t = accuracy(testing_inp, head);
@@ -569,15 +576,15 @@ int main(){
 	cout<<endl<<endl;
 
 	// RANDOM FOREST
-	int randomTrees = 70;
-	cout<<"generating random forest..."<<endl;
-	vector<Node*> randomForest = create_random_forest(training_inp, attr_val_num, randomTrees);
-	t =  random_accuracy(testing_inp, randomForest);
-	double rand_accr = get<0>(t);
-	double rand_prec = get<1>(t);
-	double rand_recl = get<2>(t);
-	cout<<"Accuracy with random forest on test data: "<<rand_accr*100<<"%"<<endl;
-	cout<<"Precision with random forest on test data: "<<rand_prec*100<<"%"<<endl;
-	cout<<"Recall with random forest on test data: "<<rand_recl*100<<"%"<<endl;
-	cout<<"F-Measure with random forest on test data: "<<(2*rand_prec*rand_recl)/(rand_prec + rand_recl)<<endl;
+	// int randomTrees = TREES;
+	// cout<<"generating random forest..."<<endl;
+	// vector<Node*> randomForest = create_random_forest(training_inp, attr_val_num, randomTrees);
+	// t =  random_accuracy(testing_inp, randomForest);
+	// double rand_accr = get<0>(t);
+	// double rand_prec = get<1>(t);
+	// double rand_recl = get<2>(t);
+	// cout<<"Accuracy with random forest on test data: "<<rand_accr*100<<"%"<<endl;
+	// cout<<"Precision with random forest on test data: "<<rand_prec*100<<"%"<<endl;
+	// cout<<"Recall with random forest on test data: "<<rand_recl*100<<"%"<<endl;
+	// cout<<"F-Measure with random forest on test data: "<<(2*rand_prec*rand_recl)/(rand_prec + rand_recl)<<endl;
 }
