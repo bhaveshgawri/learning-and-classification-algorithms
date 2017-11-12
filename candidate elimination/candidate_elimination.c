@@ -1,10 +1,3 @@
-/*
-aardvark,1,0,0,1,0,0,1,1,1,1,0,0,4,0,0,1,1
-antelope,1,0,0,1,0,0,0,1,1,1,0,0,4,1,0,1,1
-bass,0,0,1,0,0,1,1,1,1,0,0,1,0,1,0,0,4
-bear,1,0,0,1,0,0,1,1,1,1,0,0,4,0,0,1,1
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +5,7 @@ bear,1,0,0,1,0,0,1,1,1,1,0,0,4,0,0,1,1
 
 #define inf INT_MAX
 #define FEATURE_NUM 17
-#define TRAINING_INSTANCE_NUM 101// later change to 101
+#define TRAINING_INSTANCE_NUM 101
 
 typedef struct features{
 	int size;
@@ -34,6 +27,10 @@ typedef struct version_space{
 	boundary* specific_head;
 }version_space;
 
+// inf - ANY VALUE
+// -inf - NULL VALUE
+
+/*This function takes input and formats it for further use*/
 void input(instance training_data[TRAINING_INSTANCE_NUM]){
 	char string[100];
 	for (int i = 0; i < TRAINING_INSTANCE_NUM; i++){
@@ -46,6 +43,7 @@ void input(instance training_data[TRAINING_INSTANCE_NUM]){
 	}
 }
 
+/*This function prints the training data*/
 void print(instance training_data[TRAINING_INSTANCE_NUM]){
 	for (int i = 0; i < TRAINING_INSTANCE_NUM; i++){
 		for (int j = 0; j < FEATURE_NUM; j++){
@@ -55,12 +53,16 @@ void print(instance training_data[TRAINING_INSTANCE_NUM]){
 	}
 }
 
+/*This function creates a new hypothesis*/
 boundary* createHypothesis(){
 	boundary* b_hypothesis = (boundary*)malloc(sizeof(boundary));	
 	b_hypothesis->next = NULL;
 	return b_hypothesis;
 }
 
+/*This function initializes a new version space
+giving inf to general boundary
+and -inf to specific boundary*/
 version_space initialize(version_space vs){
 	boundary* ghead = createHypothesis();
 	boundary* shead = createHypothesis();
@@ -81,7 +83,8 @@ version_space initialize(version_space vs){
 	return (version_space){.generic_head = ghead, .specific_head = shead};
 }
 
-
+/*This function preprocosses the training data 
+specifically for each `type`*/
 void classify(instance training_data[TRAINING_INSTANCE_NUM], int type){
 	for (int j = 0; j < TRAINING_INSTANCE_NUM; j++){
 		if (training_data[j].feature[FEATURE_NUM-1] == type){
@@ -93,6 +96,7 @@ void classify(instance training_data[TRAINING_INSTANCE_NUM], int type){
 	}
 }
 
+// This function prints a linked list
 void printlist(boundary* list){
 	while(list){
 		printf("%d\n", list->hypothesis.feature[0]);
@@ -100,6 +104,7 @@ void printlist(boundary* list){
 	}
 }
 
+// This functions checks whether 2 instances are equal or not
 int equal(instance h1, instance h2){
 	for (int i = 0; i < FEATURE_NUM - 1; i++){
 		if (h1.feature[i]!=h2.feature[i]){
@@ -108,7 +113,7 @@ int equal(instance h1, instance h2){
 	}
 	return 1;
 }
-
+// This function copies a linked list to other list
 void copylist(boundary** newList, boundary* to_copy){
 	if (to_copy == NULL){
 		*newList = NULL;
@@ -131,6 +136,7 @@ void copylist(boundary** newList, boundary* to_copy){
 	}
 }
 
+// This function removes a element from a list
 void listremove(boundary** list, instance h){
 	boundary *temp = *list, *prev;
 	if (temp && equal(temp->hypothesis, h)){
@@ -147,6 +153,7 @@ void listremove(boundary** list, instance h){
 	free(temp);
 }
 
+// This function adds a new element to the list
 void listappend(boundary** list, instance h){
 	boundary* newNode = createHypothesis();
 	newNode->hypothesis = h;
@@ -170,6 +177,7 @@ void listappend(boundary** list, instance h){
 	return;
 }
 
+// This function deletes a whole linked list
 void deletelist(boundary** list){
 	boundary* current = *list;
 	boundary* next;
@@ -181,6 +189,7 @@ void deletelist(boundary** list){
 	*list = NULL;
 }
 
+// This fuctions calculates the version space
 void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 						version_space vs,
 						features feat[FEATURE_NUM], int type){
@@ -193,7 +202,7 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 		// positive exp
 		if (training_data[i].label == 1){
 			
-			// remove inconsistant from general set 
+			// remove inconsistant instance from general set 
 			boundary* gcopy = NULL;
 			copylist (&gcopy, vs.generic_head);
 			boundary* iterator = vs.generic_head;
@@ -214,7 +223,7 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 			}
 			copylist(&vs.generic_head, gcopy);
 
-			// minimum_generalize specific set
+			// minimum_generalize the specific set
 			s = vs.specific_head->hypothesis;
 			listremove(&vs.specific_head, s);
 			for (int j = 0; j < FEATURE_NUM - 1; j++){
@@ -231,7 +240,7 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 		else if (training_data[i].label == 0){
 			boundary* gcopy = NULL;
 			boundary* iterator = vs.generic_head;
-			// s = vs.specific_head->hypothesis;
+			s = vs.specific_head->hypothesis;
 
 			while(iterator){
 				g = iterator -> hypothesis;
@@ -243,19 +252,21 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 						break;
 					}
 				}
+				// if consistent append
 				if (flag == 1){
 					listappend(&gcopy, g);
 				}
+				// specilize otherwise
 				else{
 					instance new_g_hyp;
 					for (int j = 0; j < FEATURE_NUM - 1; j++){
 						if (g.feature[j] = inf){
 							new_g_hyp = g;
 							for (int k = 0; k < feat[j].size; k++){
-								// if (feat[j].size>2)printf("%d\n", feat[j].size);
 								if (feat[j].value[k] != training_data[i].feature[j]){
 									new_g_hyp.feature[j] = feat[j].value[k];
-									// ok if new_genreal_hyp is more general than and consistent with specific hyp
+									// ok if new_genreal_hyp is more general than
+								    // and consistent with specific hyp
 									int ok = 1;
 									for (int l = 0; l < FEATURE_NUM - 1; l++){
 										if (new_g_hyp.feature[l] != inf &&
@@ -278,33 +289,8 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 			// empty general
 			deletelist(&vs.generic_head);
 			boundary* to_remove = NULL;
-			// printlist(vs.generic_head);
-			// and remove those generic which are more spec the other generic
-			// after that general = remaining generic hyp
-
-			// printf("specific\n");
-			// for (int j=0;j<FEATURE_NUM-1;j++){
-			// 	int p = vs.specific_head->hypothesis.feature[j];
-			// 		if (p==inf)
-			// 			printf("? ");
-			// 		else
-			// 			printf("%d ", p);
-			// }
-			// printf("\n%d: \n", i+1);
-			// iterator = gcopy;
-			// while (iterator){
-			// 	for (int j = 0; j < FEATURE_NUM - 1; j++){
-			// 		int p = iterator->hypothesis.feature[j];
-			// 		if (p==inf)
-			// 			printf("? ");
-			// 		else
-			// 			printf("%d ", p);
-			// 	}
-			// 	iterator = iterator -> next;
-			// 	printf("\n");
-			// }
 			
-			// error in the nested loop: in the if condition
+			// find hypothesis which are less general than some hypothesis in G
 			boundary* intertor1 = gcopy;
 			boundary* iterator2;
 			while(intertor1){
@@ -331,6 +317,9 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 				}
 				intertor1 = intertor1->next;
 			}
+			
+			// remove hypothesis inconsistant this specific boundary
+			// remove less general hypothesis from G
 			intertor1 = gcopy;
 			while(intertor1){
 				instance ins1 = intertor1->hypothesis;
@@ -349,12 +338,23 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 				}
 				intertor1 = intertor1->next;
 			}
-			// deletelist(&to_remove);
-			// deletelist(&gcopy);
+			deletelist(&to_remove);
+			deletelist(&gcopy);
 		}
 	}		
-	printf("general\n");
-	boundary* iterator = vs.generic_head;
+	
+	// print hypothesis
+	printf("specific\n");
+	boundary* iterator = vs.specific_head;
+	for (int j=0; j < FEATURE_NUM-1; j++){
+		int p = iterator->hypothesis.feature[j];
+			if (p==inf)
+				printf("? ");
+			else
+				printf("%d ", p);
+	}
+	printf("\ngeneral\n");
+	iterator = vs.generic_head;
 	while (iterator){
 		for (int j = 0; j < FEATURE_NUM - 1; j++){
 			int p = iterator->hypothesis.feature[j];
@@ -367,7 +367,7 @@ void find_version_space(instance training_data[TRAINING_INSTANCE_NUM],
 		printf("\n");
 	}
 }
-
+// initialize the features of attributs
 void initialize_features(features feat[FEATURE_NUM]){
 	int x = 0;
 	for (int i = 0; i <= 15; i++){
@@ -394,7 +394,10 @@ int main(){
 	features feat[FEATURE_NUM];
 	initialize_features(feat);
 	input (training_data);
-	int type = 4;
-	find_version_space (training_data, vs, feat, type);
+	for (int type = 1; type <= 7; type++){
+		printf("TYPE: %d\n", type);
+		find_version_space (training_data, vs, feat, type);
+		printf("\n");
+	}
 	// print (training_data);
 }
