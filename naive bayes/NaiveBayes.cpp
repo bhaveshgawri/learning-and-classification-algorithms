@@ -63,35 +63,35 @@ vector<int> NaiveBayes::convertStringToIntPair(string word)
 }
 
 
-void NaiveBayes::increaseCountBasicNaiveBayes(bool pos, vector<int>couple)
+void NaiveBayes::increaseCountBasicNaiveBayes(bool _true, vector<int>couple)
 {
-	if (pos) positive_count[couple[0]] += couple[1];
+	if (_true) positive_count[couple[0]] += couple[1];
 	else negative_count[couple[0]] += couple[1];
 }
 
 
-void NaiveBayes::increaseCountWithoutStopWords(bool pos, vector<int>couple)
+void NaiveBayes::increaseCountWithoutStopWords(bool _true, vector<int>couple)
 {
 	if (!binary_search(stop_words.begin(), stop_words.end(), 
 						vocab_words[couple[0]])){
-		if (pos) positive_count[couple[0]] += couple[1];
+		if (_true) positive_count[couple[0]] += couple[1];
 		else negative_count[couple[0]] += couple[1];
 	}
 }
 
 
-void NaiveBayes::increaseCountBinaryNaive(bool pos, int word)
+void NaiveBayes::increaseCountBinaryNaive(bool _true, int word)
 {	
-	if (pos) positive_count[word] += 1;
+	if (_true) positive_count[word] += 1;
 	else negative_count[word] += 1;
 }
 
 
-void NaiveBayes::increaseCountBinaryNaiveWithoutStopWords(bool pos, int word)
+void NaiveBayes::increaseCountBinaryNaiveWithoutStopWords(bool _true, int word)
 {
 	if (!binary_search(stop_words.begin(), stop_words.end(), 
 						vocab_words[word])){
-		if (pos) positive_count[word] += 1;
+		if (_true) positive_count[word] += 1;
 		else negative_count[word] += 1;
 	}
 }
@@ -115,6 +115,52 @@ pair<double, double> NaiveBayes::calculateProbability(
 	return probabilities;
 }
 
+void NaiveBayes::increaseCount(int technique, bool _true, vector<int>couple)
+{
+		if (technique == 0)
+			increaseCountBasicNaiveBayes(_true, couple);
+		else if (technique == 1)
+			increaseCountWithoutStopWords(_true, couple);
+		else if (technique == 2)
+			increaseCountBinaryNaive(_true, couple[0]);
+		else if (technique == 3)
+			increaseCountBinaryNaiveWithoutStopWords(_true, couple[0]);
+}
+
+void NaiveBayes::print_correctness()
+{
+
+	double accuracy = (double)(true_positives + false_negatives) / (
+		true_positives + true_negatives + false_positives + 
+		false_negatives);
+	double precision = (double)true_positives / (
+		true_positives + false_positives);
+	double recall = (double)true_positives / (
+		true_positives + false_negatives);
+	double f_meausre = (double)(2 * precision * recall) /(
+		precision + recall);
+	
+	cout << "Accuracy:  " 
+		 << 100 * accuracy
+		 << "%"
+		 << endl;
+
+	cout << "Precision: " 
+		 << 100 * precision
+		 << "%"
+		 << endl;
+
+	cout << "Recall:    "
+		 << 100 * recall
+		 << "%" 
+		 << endl;
+
+	cout << "F-measure: "
+		 << 100 * f_meausre
+		 << "%"
+		 << endl;
+
+}
 
 void NaiveBayes::getPosNegWordsCountsFromFile(string train_feat_file_path,
 												int technique)
@@ -127,7 +173,7 @@ void NaiveBayes::getPosNegWordsCountsFromFile(string train_feat_file_path,
 	ifstream infile(train_feat_file_path);
 	while(getline(infile, line)){
 		string word = "", rating = "";
-		bool pos;
+		bool _true;
 		int idx = 0;
 		
 		while(line[idx] != ' '){
@@ -135,8 +181,8 @@ void NaiveBayes::getPosNegWordsCountsFromFile(string train_feat_file_path,
 			idx++;
 		}
 		
-		if (atoi(rating.c_str()) >= 7) pos = true;
-		else pos = false;
+		if (atoi(rating.c_str()) >= 7) _true = true;
+		else _true = false;
 		
 		for (int i=idx+1; i<line.size();i++){
 			char chr = line[i];
@@ -146,28 +192,13 @@ void NaiveBayes::getPosNegWordsCountsFromFile(string train_feat_file_path,
 			else{
 				if (word.find(':') != string::npos){
 					vector<int> couple = convertStringToIntPair(word);
-					if (technique==0)
-						increaseCountBasicNaiveBayes(pos, couple);
-					else if (technique==1)
-						increaseCountWithoutStopWords(pos, couple);
-					else if (technique==2)
-						increaseCountBinaryNaive(pos, couple[0]);
-					else if (technique==3)
-						increaseCountBinaryNaiveWithoutStopWords(pos, 
-							couple[0]);
+					increaseCount(technique, _true, couple);			
 					word = "";
 				}
 			}
 		}
 		vector<int> couple = convertStringToIntPair(word);
-		if (technique==0)
-			increaseCountBasicNaiveBayes(pos, couple);
-		else if (technique==1)
-			increaseCountWithoutStopWords(pos, couple);
-		else if (technique==2)
-			increaseCountBinaryNaive(pos, couple[0]);
-		else if (technique==3)
-			increaseCountBinaryNaiveWithoutStopWords(pos, couple[0]);
+		increaseCount(technique, _true, couple);
 	}
 }
 
@@ -187,7 +218,7 @@ void NaiveBayes::test(string test_feat_file_path)
 	ifstream infile(test_feat_file_path);
 	while(getline(infile, line)){
 		
-		bool pos;
+		bool _true;
 		int idx = 0;
 		string word = "";
 		string rating = "";
@@ -199,8 +230,8 @@ void NaiveBayes::test(string test_feat_file_path)
 			rating += line[idx];
 			idx++;
 		}
-		if (atoi(rating.c_str()) >= 7) pos = true;
-		else pos = false;
+		if (atoi(rating.c_str()) >= 7) _true = true;
+		else _true = false;
 		for (int i=idx+1; i<line.size();i++){
 			char chr = line[i];
 			if (chr != ' ' && chr != '\n'){
@@ -217,13 +248,15 @@ void NaiveBayes::test(string test_feat_file_path)
 		int word_idx = convertStringToInt(word);
 		probabilities = calculateProbability(probabilities, word_idx, positive_wc, negative_wc);
 			
-
-		bool predicted = (probabilities.first >= probabilities.second);
-		if ((pos && predicted) || ((!pos) && (!predicted))){
-			cor++;
-		}
-		tot++;
+		bool predicted = (probabilities.first < probabilities.second);
+		if (_true && predicted)
+			true_positives++;
+		else if (!_true && !predicted)
+			false_negatives++;
+		else if (!_true && predicted)
+			false_positives++;
+		else if (_true && !predicted)
+			true_negatives++;
 	}
-	cout<<(double)cor/tot<<endl;
-	cout<<cor<<" "<<tot<<endl;
+	print_correctness();
 }

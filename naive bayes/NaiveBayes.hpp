@@ -33,9 +33,11 @@ public:
 	void increaseCountWithoutStopWords(bool, vector<int>);
 	void increaseCountBinaryNaive(bool, int);
 	void increaseCountBinaryNaiveWithoutStopWords(bool, int);
+	void increaseCount(int, bool, vector<int>);
 	void getPosNegWordsCountsFromFile(string, int);
 	
 	pair<double, double> calculateProbability(pair<double, double>, int, int, int);
+	void print_correctness();
 	void test(string);
 };
 
