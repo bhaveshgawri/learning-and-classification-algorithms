@@ -30,8 +30,8 @@ public:
 	vector<int> convertStringToIntPair(string);
 	
 	void increaseCountBasicNaiveBayes(bool, vector<int>);
-	void increaseCountWithoutStopWords(bool, vector<int>);
-	void increaseCountBinaryNaive(bool, int);
+	void increaseCountBasicNaiveWithoutStopWords(bool, vector<int>);
+	void increaseCountBinaryNaiveBayes(bool, int);
 	void increaseCountBinaryNaiveWithoutStopWords(bool, int);
 	void increaseCount(int, bool, vector<int>);
 	void getPosNegWordsCountsFromFile(string, int);
