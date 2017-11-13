@@ -149,7 +149,7 @@ void NaiveBayes::increaseCount(int technique, bool _true, vector<int>couple)
 		else if (technique == 1)
 			increaseCountBasicNaiveWithoutStopWords(_true, couple);
 		else if (technique == 2)
-			increaseCountBinaryNaive(_true, couple[0]);
+			increaseCountBinaryNaiveBayes(_true, couple[0]);
 		else if (technique == 3)
 			increaseCountBinaryNaiveWithoutStopWords(_true, couple[0]);
 }
