@@ -210,7 +210,7 @@ double multiply(Point4d example, Point4d mean,
 	for (int i=0;i<dimensions;i++){
 		double temp = 0;
 		for (int j=0;j<dimensions;j++){
-			temp += x_minus_mean[i]*convarence_inv[j][i];
+			temp += x_minus_mean[j]*convarence_inv[j][i];
 		}
 		product += temp*x_minus_mean[i];
 	}
