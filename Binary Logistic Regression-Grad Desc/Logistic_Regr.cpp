@@ -3,10 +3,10 @@
 using namespace std;
 
 
-LogisticRegression::LogisticRegression(double learning_rate)
+LogisticRegression::LogisticRegression(double learning_rate, int iterations)
 {
-	this->dimensions = 4;
-	this->iterations = 1000;
+	this->features = 4;
+	this->iterations = iterations;
 	this->learning_rate = learning_rate;
 }
 
@@ -31,77 +31,78 @@ Matrix LogisticRegression::readFromInputFile(string input_file)
 }
 
 
-double sigmoid(Point4d w, Point4d example, int dimensions)
+double sigmoid(double bias, Point4d weights, Point4d example, int features)
 {
-	double a = 0;
-	for (int i=0;i<dimensions;i++){
-		a += w[i]*example[i];
+	double a = bias;
+	for (int i=0;i<features;i++){
+		a += weights[i]*example[i];
 	}
 	return (double)1.0 / (1.0 + exp(-a));
 }
 
 
-Point4d calculateGradient(Point4d w, Matrix examples, int dimensions)
+Point5d calculateGradient(double bias, Point4d weights, Matrix examples, int features)
 {
 	double sum = 0;
-	Point4d grad = Point4d(dimensions, 0);
+	double bias_grad = 0;
+	Point4d grad = Point4d(features, 0);
 	for (auto example: examples){
-		double y = sigmoid(w, example, dimensions);
-		double y_t = y - example[dimensions];		
-		for (int i=0;i<dimensions;i++){
-			grad[i] += y_t*example[i];
+		double y = sigmoid(bias, weights, example, features);
+		double y_minus_t = y - example[features];		
+		bias_grad += y_minus_t;
+		for (int i=0;i<features;i++){
+			grad[i] += y_minus_t*example[i];
 		}
 	}
-	return grad;
+	return {bias_grad, grad};
 }
 
 
-double findError(Point4d w, Matrix examples, int dimensions)
+double findError(double bias, Point4d weights, Matrix examples, int features)
 {
-	double sum = 0;
+	double error = 0;
 	for (auto example: examples){
-		if (example[dimensions]==1){
-			sum += log(sigmoid(w, example, dimensions));
+		if (example[features]==1){
+			error += log(sigmoid(bias, weights, example, features));
 		}
 		else{
-			sum += log(1-sigmoid(w, example, dimensions));
+			error += log(1-sigmoid(bias, weights, example, features));
 		}
 	}
-	return -sum;
+	return -error;
 }
 
 
-Point4d LogisticRegression::gradientDesent(Point4d w, Matrix examples)
+Point5d LogisticRegression::gradientDesent(double bias, Point4d weights, Matrix examples)
 {
-	double error;
 	int iterations = this->iterations;
-	int dimensions = this->dimensions;
+	int features = this->features;
 	double lr = this->learning_rate;
-	Point4d w_new = Point4d(dimensions, 0);
-	Point4d grad = Point4d(dimensions, 0);
-
+	
 	for (int iter=0; iter<iterations; iter++){
-		error = findError(w, examples, dimensions);
+		double error = findError(bias, weights, examples, features);
 		cout<<"error: "<<error<<nl;
-		if (error < 0.001) break;
-		grad = calculateGradient(w, examples, dimensions);
-		for (int i=0;i<dimensions;i++){
-			w_new[i] = w[i] - lr*grad[i];
+		
+		Point5d grad = calculateGradient(bias, weights, examples, features);
+		bias = bias - lr*grad.first;
+		for (int i=0;i<features;i++){
+			weights[i] = weights[i] - lr*grad.second[i];
 		}
-		w = w_new;
 	}
-	return w;
+	return {bias, weights};
 }
 
 
-void LogisticRegression::testAndPrint(Point4d optimal_w, Matrix testing_exp)
+void LogisticRegression::testAndPrint(Point5d optimal_weights, Matrix testing_exp)
 {
 	int tp=0, fp=0, tn=0, fn=0;
-	int dimensions = this->dimensions;
+	int features = this->features;
 	for (auto example: testing_exp){
-		double sigmoid_ = sigmoid(optimal_w, example, dimensions);
+		double bias = optimal_weights.first;
+		Point4d weights = optimal_weights.second;
+		double sigmoid_ = sigmoid(bias, weights, example, features);
 		bool predicted = (sigmoid_ >= 0.5);
-		bool actual = example[dimensions];
+		bool actual = example[features];
 		if (!predicted && !actual) tn++;
 		if (!predicted && actual) fn++;
 		if (predicted && actual) tp++;

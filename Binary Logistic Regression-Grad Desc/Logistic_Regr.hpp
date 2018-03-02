@@ -5,21 +5,21 @@ using namespace std;
 
 #define nl '\n'
 
-typedef vector<pair<double, bool>> Points1d;
 typedef vector<double> Point4d;
+typedef pair<double, vector<double>> Point5d;
 typedef vector<Point4d> Matrix;
 
 class LogisticRegression
 {
 private:
-	int dimensions;
+	int features;
 	int iterations;
 	double learning_rate;
 public:
-	LogisticRegression(double);
+	LogisticRegression(double, int);
 	Matrix readFromInputFile(string);
-	Point4d gradientDesent(Point4d, Matrix);
-	void testAndPrint(Point4d, Matrix);
+	Point5d gradientDesent(double, Point4d, Matrix);
+	void testAndPrint(Point5d, Matrix);
 };
 
 #endif
