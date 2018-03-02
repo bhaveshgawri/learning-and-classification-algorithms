@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "Logistic_Regr.hpp"
+#include "Logistic_Regr.cpp"
 using namespace std;
 
 #define features 4
