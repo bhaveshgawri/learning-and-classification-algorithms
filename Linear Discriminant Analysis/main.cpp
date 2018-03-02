@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "LDA.hpp"
+#include "LDA.cpp"
 using namespace std;
 
 #define dimensions 4
@@ -11,13 +11,13 @@ int main(){
 	Matrix training_exp = lda.readFromInputFile(train);
 	Matrix test_exp = lda.readFromInputFile(test);
 	
-	Point4d means_p = lda.mean(training_exp, 1);
-	Point4d means_n = lda.mean(training_exp, 0);
+	Point4d means_C1 = lda.mean(training_exp, 1);
+	Point4d means_C2 = lda.mean(training_exp, 0);
 	
-	Matrix Sw = lda.calculateSw(training_exp, means_p, means_n);
+	Matrix Sw = lda.calculateSw(training_exp, means_C1, means_C2);
 	Matrix SwInverse = lda.calculateSwInverse(Sw);
 	
-	Point4d w = lda.calculateW(SwInverse, means_p, means_n);
+	Point4d w = lda.calculateWeights(SwInverse, means_C1, means_C2);
 	Points1d examples1d = lda.get1DPoints(w, training_exp);
 	sort(examples1d.begin(), examples1d.end());
 	

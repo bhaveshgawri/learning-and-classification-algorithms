@@ -2,12 +2,16 @@
 #include "LDA.hpp"
 using namespace std;
 
+
 LDA::LDA()
 {
-	this->dimensions = 4;
+	this->features = 4;
 }
 
 
+/*
+Read input from the input file.
+*/
 Matrix LDA::readFromInputFile(string input_file)
 {
 	Matrix examples;
@@ -28,42 +32,49 @@ Matrix LDA::readFromInputFile(string input_file)
 }
 
 
-Point4d LDA::mean(Matrix examples, bool positive)
+/*
+Calculate the mean of the class whose label is given by 
+class_label.
+*/
+Point4d LDA::mean(Matrix examples, bool class_label)
 {
-	Point4d means(this->dimensions, 0);
+	Point4d means(this->features, 0);
 	int exp_size = 0;
 	for (auto example: examples){
-		if (example[this->dimensions]==positive){
-			for (int dim=0; dim < (this->dimensions);dim++){
-				means[dim] += example[dim];
+		if (example[this->features]==class_label){
+			for (int feature=0; feature < (this->features);feature++){
+				means[feature] += example[feature];
 			}
 			exp_size++;
 		}
 	}
-	for (int dim=0; dim < (this->dimensions);dim++){
-		means[dim] /= exp_size;
+	for (int feature=0; feature < (this->features);feature++){
+		means[feature] /= exp_size;
 	}
 	return means;
 }
 
 
-Matrix LDA::calculateSw(Matrix examples, Point4d mean_p, Point4d mean_n)
+/*
+Calculate total 'within-class' covarience matrix Sw.
+*/
+Matrix LDA::calculateSw(Matrix examples, Point4d mean_C1, Point4d mean_C2)
 {
-	Matrix Sw = Matrix(this->dimensions, Point4d(this->dimensions, 0.0));
+	Matrix Sw = Matrix(this->features, Point4d(this->features, 0.0));
 	for (auto example: examples){
 		Point4d pt = example;
-		if (example[this->dimensions] == 1.0){
-			for (int dim=0;dim<this->dimensions;dim++){
-				pt[dim] -= mean_p[dim];
+		if (example[this->features] == 1.0){
+			for (int feature=0;feature<this->features;feature++){
+				pt[feature] -= mean_C1[feature];
 			}
 		}
 		else{
-			for (int dim=0;dim<this->dimensions;dim++){
-				pt[dim] -= mean_n[dim];
+			for (int feature=0;feature<this->features;feature++){
+				pt[feature] -= mean_C2[feature];
 			}
 		}
-		for (int i=0;i<this->dimensions;i++){
-			for (int j=0;j<this->dimensions;j++){
+		for (int i=0;i<this->features;i++){
+			for (int j=0;j<this->features;j++){
 				Sw[i][j] += pt[i]*pt[j];
 			}
 		}
@@ -72,6 +83,11 @@ Matrix LDA::calculateSw(Matrix examples, Point4d mean_p, Point4d mean_n)
 }
 
 
+/*
+Utility function to calculate inverse of a matrix.
+
+Source: https://stackoverflow.com/a/23806710
+*/
 double invf(int i,int j,const double* m)
 {
 	int o = 2+(j-i);
@@ -92,6 +108,12 @@ double invf(int i,int j,const double* m)
 }
 
 
+/*
+Returns the inverse of the 4x4 matrix passed as an 1d array
+of size 16. Output is stored in 1d-array named out(size: 16)
+
+Source: https://stackoverflow.com/a/23806710
+*/
 bool inverseMatrix4x4(const double *m, double *out)
 {
 
@@ -116,20 +138,23 @@ bool inverseMatrix4x4(const double *m, double *out)
 }
 
 
+/*
+Calculate inverse of 'within-class' covarience matrix Sw.
+*/
 Matrix LDA::calculateSwInverse(Matrix Sw)
 {
-	Matrix SwInverse = Matrix(this->dimensions, Point4d(this->dimensions, 0.0));
+	Matrix SwInverse = Matrix(this->features, Point4d(this->features, 0.0));
 	double m[16], out[16];
-	for (int i=0, k=0;i<this->dimensions;i++){
-		for (int j=0;j<this->dimensions;j++){
+	for (int i=0, k=0;i<this->features;i++){
+		for (int j=0;j<this->features;j++){
 			m[k++] = Sw[i][j];
 		}
 	}
 	bool b = inverseMatrix4x4(m, out);
 	if (!b) return SwInverse;
 	else{
-		for (int i=0, k=0;i<this->dimensions;i++){
-			for (int j=0;j<this->dimensions;j++){
+		for (int i=0, k=0;i<this->features;i++){
+			for (int j=0;j<this->features;j++){
 				SwInverse[i][j] = out[k++];
 			}
 		}
@@ -138,64 +163,88 @@ Matrix LDA::calculateSwInverse(Matrix Sw)
 }
 
 
-Point4d LDA::calculateW(Matrix SwInverse, Point4d mean_p, Point4d mean_n)
+/*
+Calculate weight vector and normalize it.
+*/
+Point4d LDA::calculateWeights(Matrix SwInverse, Point4d mean_C1, Point4d mean_C2)
 {
-	Point4d w = Point4d(this->dimensions, 0);
-	Point4d mean_diff = Point4d(this->dimensions, 0);
-	for (int i=0;i<this->dimensions;i++){
-		mean_diff[i] = mean_p[i] - mean_n[i];
+	Point4d weights = Point4d(this->features, 0);
+	Point4d mean_diff = Point4d(this->features, 0);
+	for (int i=0;i<this->features;i++){
+		mean_diff[i] = mean_C1[i] - mean_C2[i];
 	}
-	for (int i=0;i<this->dimensions;i++){
-		for (int j=0;j<this->dimensions;j++){
-			w[i] += SwInverse[i][j]*mean_diff[j];
+	for (int i=0;i<this->features;i++){
+		for (int j=0;j<this->features;j++){
+			weights[i] += SwInverse[i][j]*mean_diff[j];
 		}
 	}
-	return w;
+
+	// normalize weights
+	double sum = 0;
+	for (int i=0;i<this->features;i++){
+		sum += weights[i]*weights[i];
+	}
+	for (int i=0;i<this->features;i++){
+		weights[i] /= sqrt(sum);
+	}
+
+	return weights;
 }
 
 
+/*
+Project testing examples to 1d by multiplying w.T * example
+while maintaining the label of points.
+*/
 Points1d LDA::get1DPoints(Point4d w, Matrix examples)
 {
 	Points1d examples1d;
 	for (auto example: examples){
 		pair<double, bool> temp = {0, 0};
-		for (int dim=0;dim<this->dimensions;dim++){
-			 temp.first += w[dim]*example[dim];
+		for (int feature=0;feature<this->features;feature++){
+			 temp.first += w[feature]*example[feature];
 		}
-		temp.second = example[this->dimensions];
+		temp.second = example[this->features];
 		examples1d.push_back(temp);
 	}
 	return examples1d;
 }
 
 
+/*
+Calculate entropy of given points about a specific index.
+*/
 double calculateEntropy(int index, Points1d examples1d)
 {
-	double pos=0, neg=0;
+	double C1=0, C2=0;
 	double entropy_left=0, entropy_right=0;
 	for (int i=0;i<=index;i++){
-		if (examples1d[i].second) pos++;
-		else neg++;
+		if (examples1d[i].second) C1++;
+		else C2++;
 	}
-	pos /= (pos+neg);
-	neg /= (pos+neg);
-	if (pos!=0) entropy_left += -pos*log2(pos);
-	if (neg!=0) entropy_left += -neg*log2(neg);
+	C1 /= (C1+C2);
+	C2 /= (C1+C2);
+	if (C1!=0) entropy_left += -C1*log2(C1);
+	if (C2!=0) entropy_left += -C2*log2(C2);
 
-	pos = neg = 0;
+	C1 = C2 = 0;
 	for (int i=index+1;i<examples1d.size();i++){
-		if (examples1d[i].second) pos++;
-		else neg++;
+		if (examples1d[i].second) C1++;
+		else C2++;
 	}
-	pos /= (pos+neg);
-	neg /= (pos+neg);
-	if (pos!=0) entropy_right += -pos*log2(pos);
-	if (neg!=0) entropy_right += -neg*log2(neg);
+	C1 /= (C1+C2);
+	C2 /= (C1+C2);
+	if (C1!=0) entropy_right += -C1*log2(C1);
+	if (C2!=0) entropy_right += -C2*log2(C2);
 
 	return (entropy_left + entropy_right)/2;
 }
 
-
+/*
+Calculate threshold to seperate the classes.
+1d points having value greater than threshold would
+belong to one class and less than that to other class.
+*/
 double LDA::calculate1dThreshold(Points1d examples1d)
 {
 	double min_entropy = DBL_MAX;
@@ -211,7 +260,9 @@ double LDA::calculate1dThreshold(Points1d examples1d)
 	return threshold;
 }
 
-
+/*
+Calculate and print Accuracy, Precision and Recall
+*/
 void LDA::testAndPrint(double threshold_1d, Points1d testing_points)
 {
 	int tp=0, fp=0, tn=0, fn=0;
@@ -229,4 +280,8 @@ void LDA::testAndPrint(double threshold_1d, Points1d testing_points)
 	cout<<"Accuracy:  "<<(double)(tp+tn)/(tp+fp+tn+fn)<<nl;
 	cout<<"Precision: "<<(double)(tp)/(tp+fp)<<nl;
 	cout<<"Recall:    "<<(double)(tp)/(tp+fn)<<nl;
+	cout<<nl<<nl<<"Confusion Matrix:"<<nl;
+	cout<<"\t\t"<<"Predicted: 0\tPredicted: 1"<<nl;
+	cout<<"Actual: 0\t"<<tn<<"\t\t"<<fp<<nl;
+	cout<<"Actual: 1\t"<<fn<<"\t\t"<<tp<<nl;
 }
