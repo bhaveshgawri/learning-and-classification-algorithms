@@ -10,7 +10,10 @@ LogisticRegression::LogisticRegression(double learning_rate, int iterations)
 	this->learning_rate = learning_rate;
 }
 
-
+/*
+Read input from the test file whose path is passed as argument
+and store it in Matrix.
+*/
 Matrix LogisticRegression::readFromInputFile(string input_file)
 {
 	Matrix examples;
@@ -30,7 +33,10 @@ Matrix LogisticRegression::readFromInputFile(string input_file)
 	return examples;
 }
 
-
+/*
+Returns the value correspoinding to logistic sigmoid fuction applied on 
+bias, wieghts and input point example. 
+*/
 double sigmoid(double bias, Point4d weights, Point4d example, int features)
 {
 	double a = bias;
@@ -40,7 +46,10 @@ double sigmoid(double bias, Point4d weights, Point4d example, int features)
 	return (double)1.0 / (1.0 + exp(-a));
 }
 
-
+/*
+Calculate and return gradient of logistic error function
+for given value of bias, weights.
+*/
 Point5d calculateGradient(double bias, Point4d weights, Matrix examples, int features)
 {
 	double sum = 0;
@@ -57,7 +66,10 @@ Point5d calculateGradient(double bias, Point4d weights, Matrix examples, int fea
 	return {bias_grad, grad};
 }
 
-
+/*
+Calculate and return value of error of logistic function which is
+negative logarithm of likelihood function. 
+*/
 double findError(double bias, Point4d weights, Matrix examples, int features)
 {
 	double error = 0;
@@ -72,7 +84,10 @@ double findError(double bias, Point4d weights, Matrix examples, int features)
 	return -error;
 }
 
-
+/*
+Apply gradient descent on weights and bias for given number of 
+iterations.
+*/
 Point5d LogisticRegression::gradientDesent(double bias, Point4d weights, Matrix examples)
 {
 	int iterations = this->iterations;
@@ -92,7 +107,9 @@ Point5d LogisticRegression::gradientDesent(double bias, Point4d weights, Matrix 
 	return {bias, weights};
 }
 
-
+/*
+Calculate and print Accuracy, Precision and Recall.
+*/
 void LogisticRegression::testAndPrint(Point5d optimal_weights, Matrix testing_exp)
 {
 	int tp=0, fp=0, tn=0, fn=0;
@@ -116,4 +133,8 @@ void LogisticRegression::testAndPrint(Point5d optimal_weights, Matrix testing_ex
 	cout<<"Accuracy:  "<<(double)(tp+tn)/(tp+fp+tn+fn)<<nl;
 	cout<<"Precision: "<<(double)(tp)/(tp+fp)<<nl;
 	cout<<"Recall:    "<<(double)(tp)/(tp+fn)<<nl;
+	cout<<nl<<nl<<"Confusion Matrix:"<<nl;
+	cout<<"\t\t"<<"Predicted: 0\tPredicted: 1"<<nl;
+	cout<<"Actual: 0\t"<<tn<<"\t\t"<<fp<<nl;
+	cout<<"Actual: 1\t"<<fn<<"\t\t"<<tp<<nl;
 }
