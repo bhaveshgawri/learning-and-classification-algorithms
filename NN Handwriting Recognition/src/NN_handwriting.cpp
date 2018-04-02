@@ -2,6 +2,7 @@
 #include "NN_handwriting.hpp"
 using namespace std;
 
+
 FFNNet3L::FFNNet3L(int L2_size, int iterations, double thresh)
 {
 	// +1 for bias
@@ -11,6 +12,7 @@ FFNNet3L::FFNNet3L(int L2_size, int iterations, double thresh)
 	
 	this->iterations = iterations;
 	this->validation_acc_thresh = thresh;
+	
 	// hyperparameters of gradient decent
 	this->alpha = 1e-3;
 	this->beta1 = 0.9;
@@ -31,7 +33,7 @@ FFNNet3L::FFNNet3L(int L2_size, int iterations, double thresh)
 	this->bias_corr_2nd_mom_L2_L3 =  Matrix(this->L2_size, Pointnd(this->L3_size, 0));
 }
 
-
+/*print the input matrix row-by-row*/
 void printMatrix(Matrix matrix)
 {
 	int count=0;
@@ -44,7 +46,7 @@ void printMatrix(Matrix matrix)
 	}
 }
 
-
+/*Read input from text file and store it in Matrix format*/
 Matrix FFNNet3L::readFromInputFile(string input_file)
 {
 	Matrix examples;
@@ -64,7 +66,7 @@ Matrix FFNNet3L::readFromInputFile(string input_file)
 	return examples;
 }
 
-
+/*Give random real values between -1 and 1 to weights*/
 void FFNNet3L::initialize_random_weights()
 {
 	int l1 = this->L1_size;
@@ -91,7 +93,7 @@ void FFNNet3L::initialize_random_weights()
 	}
 }
 
-
+/*print the weights of the NN's layers*/
 void FFNNet3L::printweights()
 {
 	cout<<"L1-L2 weights"<<nl;
@@ -101,7 +103,9 @@ void FFNNet3L::printweights()
 	printMatrix(this->weights_L2_L3);
 }
 
-
+/*Select and return random examples from training set
+  No. of examples to select: `miniBatch_size`
+*/
 Matrix FFNNet3L::get_random_miniBatch(Matrix train, int miniBatch_size)
 {
 	random_shuffle(train.begin(), train.end());
@@ -113,7 +117,7 @@ Matrix FFNNet3L::get_random_miniBatch(Matrix train, int miniBatch_size)
 	return miniBatch;
 }
 
-
+/*Forward propagation of inputs by multiplying matrices through L1->L2->L3*/
 MatrixPair FFNNet3L::forward_Propagation(Matrix train)
 {
 	int l1 = this->L1_size;
@@ -176,7 +180,7 @@ MatrixPair FFNNet3L::forward_Propagation(Matrix train)
 	return {hidden_outputs, final_outputs};
 }
 
-
+/*Back-propagation of errors and calculation of gradients for corressponding weights matrices*/
 MatrixPair FFNNet3L::back_Propagation(Matrix miniBatch_nodes_L1, Matrix miniBatch_nodes_L2,
 										Matrix miniBatch_errors)
 {
@@ -225,7 +229,9 @@ MatrixPair FFNNet3L::back_Propagation(Matrix miniBatch_nodes_L1, Matrix miniBatc
 	return {gradient_mat_L1_L2, gradient_mat_L2_L3};
 }
 
-
+/*Utility function to forward propagate inputs of miniBatch
+  calculate errors for each example in miniBatch and Back-propagate
+  those errors to calculate weight gradients*/
 MatrixPair FFNNet3L::calc_grad(Matrix miniBatch)
 {
 	int l1 = this->L1_size;
@@ -258,7 +264,7 @@ MatrixPair FFNNet3L::calc_grad(Matrix miniBatch)
 	return gradient_weights;
 }
 
-
+/*Update the weights of the NN layers as per Adam optimizer specifications*/
 void FFNNet3L::update_weights(int iteration, MatrixPair gradient_weights)
 {
 	int l1 = this->L1_size;
@@ -302,7 +308,11 @@ void FFNNet3L::update_weights(int iteration, MatrixPair gradient_weights)
 	}
 }
 
+/*Gradient Decent Algorithm using Adam optimizer which uses momentum and adaptive parameter
+  for gradent decent
 
+  Source: https://arxiv.org/pdf/1412.6980.pdf
+  		[ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION]*/
 void FFNNet3L::apadtive_param_momentum_GD(Matrix train, Matrix validation, Matrix test, int miniBatch_size)
 {
 	double validation_acc;
@@ -323,7 +333,8 @@ void FFNNet3L::apadtive_param_momentum_GD(Matrix train, Matrix validation, Matri
 	}
 }
 
-
+/*find the ratio of samples in `examples` which provide correct predection of results
+  from current weight to total no. of samples in `examples`*/
 double FFNNet3L::check_Accuracy(Matrix examples)
 {
 	int l1 = this->L1_size;

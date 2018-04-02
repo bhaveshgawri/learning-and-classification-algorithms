@@ -2,6 +2,7 @@
 #include "NN_handwriting.hpp"
 using namespace std;
 
+
 #define L2_size 20
 #define iterations 3000
 #define validation_acc_thresh 0.90

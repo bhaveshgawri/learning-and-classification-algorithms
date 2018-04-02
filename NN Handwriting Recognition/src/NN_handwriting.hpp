@@ -5,7 +5,6 @@ using namespace std;
 
 #define nl '\n'
 
-
 typedef vector<double> Pointnd;
 typedef vector<Pointnd> Matrix;
 typedef pair<Matrix, Matrix> MatrixPair;
