@@ -2,7 +2,7 @@
 #include "NN_handwriting.hpp"
 using namespace std;
 
-FFNNet3L::FFNNet3L(int L2_size, int iterations)
+FFNNet3L::FFNNet3L(int L2_size, int iterations, double thresh)
 {
 	// +1 for bias
 	this->L1_size = 64 + 1;
@@ -10,7 +10,7 @@ FFNNet3L::FFNNet3L(int L2_size, int iterations)
 	this->L3_size = 10;
 	
 	this->iterations = iterations;
-	
+	this->validation_acc_thresh = thresh;
 	// hyperparameters of gradient decent
 	this->alpha = 1e-3;
 	this->beta1 = 0.9;
@@ -303,27 +303,37 @@ void FFNNet3L::update_weights(int iteration, MatrixPair gradient_weights)
 }
 
 
-void FFNNet3L::apadtive_param_momentum_GD(Matrix train, int miniBatch_size)
+void FFNNet3L::apadtive_param_momentum_GD(Matrix train, Matrix validation, Matrix test, int miniBatch_size)
 {
+	double validation_acc;
 	for (int i=0; i<this->iterations;i++){
-		cout<<i<<nl;
+		cout<<"Iteration# "<<i<<nl;
+		cout<<"Accuracy over training_data: "<<check_Accuracy(train)<<nl;
+		cout<<"Accuracy over validation_data: "<<(validation_acc=check_Accuracy(validation))<<nl<<nl;
+		if (validation_acc > this->validation_acc_thresh){
+			cout<<"Accuracy over test data: "<<check_Accuracy(test)<<nl;
+			break;
+		}
 		Matrix miniBatch = this->get_random_miniBatch(train, miniBatch_size);
 		MatrixPair gradient_weights = this->calc_grad(miniBatch);
 		update_weights(i, gradient_weights);
+		if (i == this->iterations-1){
+			cout<<"Accuracy over test data: "<<check_Accuracy(test)<<nl;
+		}
 	}
 }
 
 
-void FFNNet3L::check_Accuracy(Matrix test)
+double FFNNet3L::check_Accuracy(Matrix examples)
 {
 	int l1 = this->L1_size;
 	int l3 = this->L3_size;
-	MatrixPair results = this->forward_Propagation(test);
+	MatrixPair results = this->forward_Propagation(examples);
 	Matrix outputs = results.second;
 
 	int corr = 0;
 	for (int i=0; i<(int)outputs.size(); i++){
-		int true_res = test[i][l1-1];
+		int true_res = examples[i][l1-1];
 		int pred_res;
 		double maxx = -DBL_MAX;
 		for (int j=0; j<outputs[i].size(); j++){
@@ -334,5 +344,5 @@ void FFNNet3L::check_Accuracy(Matrix test)
 		}
 		corr += (pred_res==true_res);
 	}
-	cout<<(double)corr/(double)outputs.size()<<nl;
+	return (double)corr/(double)outputs.size();
 }

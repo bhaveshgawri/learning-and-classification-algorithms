@@ -18,7 +18,8 @@ private:
 	int L3_size;
 	
 	int iterations;
-	
+	double validation_acc_thresh;
+
 	double alpha;
 	double beta1;
 	double beta2;
@@ -38,7 +39,7 @@ private:
 	Matrix bias_corr_2nd_mom_L2_L3;
 
 public:
-	FFNNet3L(int, int);
+	FFNNet3L(int, int, double);
 	Matrix readFromInputFile(string);
 	
 	void initialize_random_weights();
@@ -50,8 +51,8 @@ public:
 	void update_weights(int, MatrixPair);
 	MatrixPair calc_grad(Matrix);
 
-	void apadtive_param_momentum_GD(Matrix, int);
-	void check_Accuracy(Matrix);
+	void apadtive_param_momentum_GD(Matrix, Matrix, Matrix, int);
+	double check_Accuracy(Matrix);
 };
 
 #endif
