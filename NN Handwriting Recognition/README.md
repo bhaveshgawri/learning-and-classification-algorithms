@@ -30,7 +30,7 @@ Recognition of handwritten digits from 0-9 using Neural Networks.
 ### Results
 Hidden units were varied from 5-10 and following results were obtained
 
-|HiddenL Size|Validtion Thresh.|Iterations| Train Accr.|Validation Accr.|Test Accr.|	
+|HiddenL Size|Validation Thresh.|Iterations| Train Accr.|Validation Accr.|Test Accr.|	
 |------------|-----------------|----------|------------|-----------------|----------|
 |5	|0.92|   3000| 	 	0.93|  0.915294|0.909581|
 |6|  0.92|   2128|	 	0.941613|  0.921176|0.917964|
